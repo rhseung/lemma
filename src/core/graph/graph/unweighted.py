@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from core.graph.graph.base import _AbstractGraph
+import json as _json
+
+from core.graph.graph.abstract import _AbstractGraph
+from core.graph.io import _parse_dot
 from core.graph.primitives.edge import Edge
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.vertex import Vertex
@@ -134,6 +137,7 @@ class UnweightedGraph(_AbstractGraph[Edge]):
         import graphviz
 
         dot = graphviz.Graph() if self.kind == EdgeKind.UNDIRECTED else graphviz.Digraph()
+        dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
             dot.node(v.label)
         seen: set[frozenset] = set()
@@ -147,6 +151,119 @@ class UnweightedGraph(_AbstractGraph[Edge]):
                 attrs = {"dir": "both"} if self.kind == EdgeKind.BIDIRECTED else {}
                 dot.edge(label, nlabel, **attrs)
         return dot
+
+    @classmethod
+    def from_edge_list(
+        cls,
+        edges: list[tuple[Vertex | str, Vertex | str]],
+        *,
+        kind: EdgeKind = EdgeKind.UNDIRECTED,
+    ) -> UnweightedGraph:
+        """간선 목록으로 그래프를 생성한다.
+
+        Args:
+            edges: ``(u, v)`` 튜플의 목록. ``Vertex`` 또는 레이블 문자열 모두 허용.
+            kind: 간선의 방향성.
+        """
+        g = cls(kind=kind)
+        for u, v in edges:
+            g.add_edge(Vertex(u) if isinstance(u, str) else u, Vertex(v) if isinstance(v, str) else v)
+        return g
+
+    def to_edge_list(self) -> list[tuple[str, str]]:
+        """간선을 ``(u_label, v_label)`` 튜플 목록으로 반환한다.
+
+        무방향·양방향 그래프에서는 각 간선을 한 번만 포함한다.
+        """
+        seen: set[frozenset] = set()
+        result: list[tuple[str, str]] = []
+        for label, nbrs in self._adj.items():
+            for nlabel in nbrs:
+                if self.kind != EdgeKind.DIRECTED:
+                    key = frozenset((label, nlabel))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                result.append((label, nlabel))
+        return result
+
+    def to_dot(self) -> str:
+        """그래프를 DOT 언어 문자열로 직렬화한다."""
+        return self._to_graphviz().source  # type: ignore[attr-defined]
+
+    @classmethod
+    def from_dot(cls, s: str) -> UnweightedGraph:
+        """DOT 문자열에서 그래프를 복원한다."""
+        kind, vertex_labels, edges = _parse_dot(s)
+        g = cls(kind=kind)
+        for label in vertex_labels:
+            g.add_vertex(Vertex(label))
+        for u, v, _ in edges:
+            g.add_edge(Vertex(u), Vertex(v))
+        return g
+
+    def to_json(self) -> str:
+        """그래프를 JSON 문자열로 직렬화한다."""
+        return _json.dumps({
+            "type": "UnweightedGraph",
+            "kind": self.kind.name.lower(),
+            "vertices": [v.label for v in self.vertices()],
+            "edges": self.to_edge_list(),
+        })
+
+    @classmethod
+    def from_json(cls, s: str) -> UnweightedGraph:
+        """JSON 문자열에서 그래프를 복원한다."""
+        data = _json.loads(s)
+        kind = EdgeKind[data["kind"].upper()]
+        g = cls(kind=kind)
+        for label in data["vertices"]:
+            g.add_vertex(Vertex(label))
+        for u, v in data["edges"]:
+            g.add_edge(Vertex(u), Vertex(v))
+        return g
+
+    def to_adjacency_matrix(self) -> list[list[int]]:
+        """인접 행렬을 반환한다. 행·열 순서는 ``vertices()``와 동일하다.
+
+        간선이 있으면 ``1``, 없으면 ``0``.
+        """
+        verts = self.vertices()
+        idx = {v.label: i for i, v in enumerate(verts)}
+        n = len(verts)
+        mat = [[0] * n for _ in range(n)]
+        for label, nbrs in self._adj.items():
+            for nlabel in nbrs:
+                mat[idx[label]][idx[nlabel]] = 1
+        return mat
+
+    @classmethod
+    def from_adjacency_matrix(
+        cls,
+        m: list[list[int]],
+        labels: list[str] | None = None,
+        *,
+        kind: EdgeKind = EdgeKind.UNDIRECTED,
+    ) -> UnweightedGraph:
+        """인접 행렬에서 그래프를 생성한다.
+
+        Args:
+            m: n x n 정수 행렬. 0이면 간선 없음, 0이 아니면 간선 있음.
+            labels: 정점 레이블 목록. ``None``이면 ``"0"``, ``"1"``, ... 을 사용.
+            kind: 간선의 방향성.
+        """
+        n = len(m)
+        if labels is None:
+            labels = [str(i) for i in range(n)]
+        verts = [Vertex(label) for label in labels]
+        g = cls(kind=kind)
+        for v in verts:
+            g.add_vertex(v)
+        for i in range(n):
+            for j in range(n):
+                if m[i][j]:
+                    g.add_edge(verts[i], verts[j])
+        return g
 
     def __repr__(self) -> str:
         return (

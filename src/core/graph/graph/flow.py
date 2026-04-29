@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import json as _json
+from typing import TYPE_CHECKING, Self
 
-from core.graph.graph.base import _AbstractGraph
+from core.graph.graph.abstract import _AbstractGraph
+from core.graph.io import _parse_dot
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.flow_edge import FlowEdge
 from core.graph.primitives.vertex import Vertex
@@ -149,6 +151,7 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
         import graphviz
 
         dot = graphviz.Digraph()
+        dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
             dot.node(v.label)
         for edges in self._adj.values():
@@ -156,6 +159,123 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
                 if e.forward:
                     dot.edge(e.src.label, e.dst.label, label=f"{e.flow}/{e.capacity}")
         return dot
+
+    @classmethod
+    def from_edge_list(
+        cls,
+        edges: list[tuple[Vertex | str, Vertex | str, W]],
+        *,
+        kind: EdgeKind = EdgeKind.DIRECTED,
+    ) -> Self:
+        """간선 목록으로 유량 그래프를 생성한다.
+
+        Args:
+            edges: ``(u, v, capacity)`` 튜플의 목록. ``Vertex`` 또는 레이블 문자열 모두 허용.
+            kind: 무시됨. ``FlowGraph`` 는 항상 ``DIRECTED``.
+        """
+        g = cls()
+        for u, v, cap in edges:
+            g.add_edge(
+                Vertex(u) if isinstance(u, str) else u, Vertex(v) if isinstance(v, str) else v, cap
+            )
+        return g
+
+    def to_edge_list(self) -> list[tuple[str, str, W]]:
+        """정방향 간선을 ``(u_label, v_label, capacity)`` 튜플 목록으로 반환한다."""
+        return [
+            (e.src.label, e.dst.label, e.capacity)
+            for edges in self._adj.values()
+            for e in edges
+            if e.forward
+        ]
+
+    def to_dot(self) -> str:
+        """그래프를 DOT 언어 문자열로 직렬화한다."""
+        return self._to_graphviz().source  # type: ignore[attr-defined]
+
+    @classmethod
+    def from_dot(cls, s: str) -> Self:
+        """DOT 문자열에서 유량 그래프를 복원한다.
+
+        간선의 ``label`` 속성에서 용량을 읽는다. 정수로 파싱 가능하면 ``int``, 아니면 ``float``.
+        """
+        _, vertex_labels, edges = _parse_dot(s)
+        g = cls()
+        for label in vertex_labels:
+            g.add_vertex(Vertex(label))
+        for u, v, cap_str in edges:
+            if cap_str is None:
+                raise ValueError(f"edge {u!r} → {v!r} has no capacity in DOT string")
+            try:
+                cap = int(cap_str.split("/")[1] if "/" in cap_str else cap_str)
+            except ValueError:
+                cap = float(cap_str)
+            g.add_edge(Vertex(u), Vertex(v), cap)
+        return g
+
+    def to_json(self) -> str:
+        """그래프를 JSON 문자열로 직렬화한다. 정방향 간선의 용량만 저장한다."""
+        return _json.dumps(
+            {
+                "type": "FlowGraph",
+                "vertices": [v.label for v in self.vertices()],
+                "edges": self.to_edge_list(),
+            }
+        )
+
+    @classmethod
+    def from_json(cls, s: str) -> Self:
+        """JSON 문자열에서 유량 그래프를 복원한다."""
+        data = _json.loads(s)
+        g = cls()
+        for label in data["vertices"]:
+            g.add_vertex(Vertex(label))
+        for u, v, cap in data["edges"]:
+            g.add_edge(Vertex(u), Vertex(v), cap)
+        return g
+
+    def to_adjacency_matrix(self) -> list[list]:
+        """인접 행렬을 반환한다. 행·열 순서는 ``vertices()``와 동일하다.
+
+        정방향 간선이 있으면 용량, 없으면 ``None``.
+        """
+        verts = self.vertices()
+        idx = {v.label: i for i, v in enumerate(verts)}
+        n = len(verts)
+        mat: list[list] = [[None] * n for _ in range(n)]
+        for edges in self._adj.values():
+            for e in edges:
+                if e.forward:
+                    mat[idx[e.src.label]][idx[e.dst.label]] = e.capacity
+        return mat
+
+    @classmethod
+    def from_adjacency_matrix(
+        cls,
+        m: list[list],
+        labels: list[str] | None = None,
+        *,
+        kind: EdgeKind = EdgeKind.DIRECTED,
+    ) -> Self:
+        """인접 행렬에서 유량 그래프를 생성한다.
+
+        Args:
+            m: n x n 행렬. ``None``이면 간선 없음, 그 외 값은 간선의 용량.
+            labels: 정점 레이블 목록. ``None``이면 ``"0"``, ``"1"``, ... 을 사용.
+            kind: 무시됨. ``FlowGraph`` 는 항상 ``DIRECTED``.
+        """
+        n = len(m)
+        if labels is None:
+            labels = [str(i) for i in range(n)]
+        verts = [Vertex(label) for label in labels]
+        g = cls()
+        for v in verts:
+            g.add_vertex(v)
+        for i in range(n):
+            for j in range(n):
+                if m[i][j] is not None:
+                    g.add_edge(verts[i], verts[j], m[i][j])
+        return g
 
     def __repr__(self) -> str:
         return f"FlowGraph(directed, V={self.num_vertices}, E={self.num_edges})"

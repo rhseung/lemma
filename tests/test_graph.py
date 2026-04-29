@@ -286,7 +286,7 @@ class TestFlowGraph:
         g.add_edge(a, b, capacity=10)
         fwd = g.edges(a)[0]
         assert fwd.residual == 10.0
-        fwd.flow = 4.0
+        fwd.flow = 4
         assert fwd.residual == 6.0
 
     def test_neighbors_all_forward(self, verts):
@@ -294,7 +294,7 @@ class TestFlowGraph:
         g = FlowGraph()
         g.add_edge(a, b, capacity=10)
         fwd = g.edges(a)[0]
-        fwd.flow = 10.0
+        fwd.flow = 10
         assert list(g.neighbors(a)) == [b]
 
     def test_neighbors_residual_positive_residual_only(self, verts):
@@ -302,7 +302,7 @@ class TestFlowGraph:
         g = FlowGraph()
         g.add_edge(a, b, capacity=10)
         fwd = g.edges(a)[0]
-        fwd.flow = 10.0
+        fwd.flow = 10
         assert list(g.neighbors_residual(a)) == []
 
     def test_validate_passes(self, verts):
@@ -321,3 +321,280 @@ class TestFlowGraph:
         a, b, c, _ = verts
         with pytest.raises(ValueError, match="directed"):
             FlowGraph(a - 10 - b - 5 - c)
+
+
+class TestUnweightedGraphIO:
+    def test_from_edge_list_string_labels(self):
+        g = UnweightedGraph.from_edge_list([("a", "b"), ("b", "c")])
+        assert g.num_vertices == 3
+        assert g.num_edges == 2
+        assert g.has_edge(Vertex("a"), Vertex("b"))
+
+    def test_from_edge_list_vertex_objects(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph.from_edge_list([(a, b), (b, c)])
+        assert g.num_edges == 2
+
+    def test_from_edge_list_directed(self):
+        g = UnweightedGraph.from_edge_list([("a", "b"), ("b", "c")], kind=EdgeKind.DIRECTED)
+        assert g.kind == EdgeKind.DIRECTED
+        assert g.has_edge(Vertex("a"), Vertex("b"))
+        assert not g.has_edge(Vertex("b"), Vertex("a"))
+
+    def test_to_edge_list_undirected(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        edges = g.to_edge_list()
+        assert len(edges) == 2
+        assert ("a", "b") in edges
+        assert ("b", "c") in edges
+
+    def test_to_edge_list_directed(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a >> b >> c)
+        edges = g.to_edge_list()
+        assert ("a", "b") in edges
+        assert ("b", "c") in edges
+        assert len(edges) == 2
+
+    def test_to_json_from_json_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g2 = UnweightedGraph.from_json(g.to_json())
+        assert g2.num_vertices == 3
+        assert g2.num_edges == 2
+        assert g2.kind == EdgeKind.UNDIRECTED
+        assert set(g2.to_edge_list()) == set(g.to_edge_list())
+
+    def test_json_directed_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a >> b >> c)
+        g2 = UnweightedGraph.from_json(g.to_json())
+        assert g2.kind == EdgeKind.DIRECTED
+        assert g2.has_edge(Vertex("a"), Vertex("b"))
+        assert not g2.has_edge(Vertex("b"), Vertex("a"))
+
+    def test_to_dot_from_dot_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g2 = UnweightedGraph.from_dot(g.to_dot())
+        assert g2.num_vertices == 3
+        assert g2.num_edges == 2
+
+    def test_dot_directed_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a >> b >> c)
+        g2 = UnweightedGraph.from_dot(g.to_dot())
+        assert g2.kind == EdgeKind.DIRECTED
+
+    def test_to_adjacency_matrix(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        mat = g.to_adjacency_matrix()
+        assert len(mat) == 3
+        # 대칭 행렬 확인
+        for i in range(3):
+            for j in range(3):
+                assert mat[i][j] == mat[j][i]
+
+    def test_adjacency_matrix_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        labels = [v.label for v in g.vertices()]
+        mat = g.to_adjacency_matrix()
+        g2 = UnweightedGraph.from_adjacency_matrix(mat, labels)
+        assert g2.num_edges == g.num_edges
+
+    def test_A_property(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        assert g.to_adjacency_matrix() == g.A
+
+    def test_isolated_vertex_preserved_in_dot(self, verts):
+        a, b, c, d = verts
+        g = UnweightedGraph(a - b - c)
+        g.add_vertex(d)
+        g2 = UnweightedGraph.from_dot(g.to_dot())
+        assert g2.num_vertices == 4
+
+    def test_isolated_vertex_preserved_in_json(self, verts):
+        a, b, c, d = verts
+        g = UnweightedGraph(a - b - c)
+        g.add_vertex(d)
+        g2 = UnweightedGraph.from_json(g.to_json())
+        assert g2.num_vertices == 4
+
+
+class TestWeightedGraphIO:
+    def test_from_edge_list_string_labels(self):
+        g = WeightedGraph.from_edge_list([("a", "b", 3), ("b", "c", 2)])
+        assert g.num_edges == 2
+        assert g.get_edge(Vertex("a"), Vertex("b")).weight == 3
+
+    def test_from_edge_list_vertex_objects(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph.from_edge_list([(a, b, 5), (b, c, 7)])
+        assert g.get_edge(a, b).weight == 5
+
+    def test_to_edge_list(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        edges = g.to_edge_list()
+        assert len(edges) == 2
+        assert ("a", "b", 3) in edges
+        assert ("b", "c", 2) in edges
+
+    def test_to_json_from_json_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        g2 = WeightedGraph.from_json(g.to_json())
+        assert g2.num_edges == 2
+        assert g2.get_edge(Vertex("a"), Vertex("b")).weight == 3
+
+    def test_to_dot_from_dot_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        g2 = WeightedGraph.from_dot(g.to_dot())
+        assert g2.num_edges == 2
+        assert g2.get_edge(Vertex("a"), Vertex("b")).weight == 3
+
+    def test_dot_directed_weights(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a >> 5 >> b >> 10 >> c)
+        g2 = WeightedGraph.from_dot(g.to_dot())
+        assert g2.kind == EdgeKind.DIRECTED
+        assert g2.get_edge(Vertex("a"), Vertex("b")).weight == 5
+
+    def test_float_weights_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 1.5 - b - 2.5 - c)
+        g2 = WeightedGraph.from_dot(g.to_dot())
+        assert g2.get_edge(Vertex("a"), Vertex("b")).weight == pytest.approx(1.5)
+
+    def test_to_adjacency_matrix(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        mat = g.to_adjacency_matrix()
+        verts_list = g.vertices()
+        idx = {v.label: i for i, v in enumerate(verts_list)}
+        assert mat[idx["a"]][idx["b"]] == 3
+        assert mat[idx["b"]][idx["c"]] == 2
+        assert mat[idx["a"]][idx["c"]] is None
+
+    def test_adjacency_matrix_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        labels = [v.label for v in g.vertices()]
+        mat = g.to_adjacency_matrix()
+        g2 = WeightedGraph.from_adjacency_matrix(mat, labels)
+        assert g2.num_edges == g.num_edges
+        assert g2.get_edge(Vertex("a"), Vertex("b")).weight == 3
+
+    def test_A_property(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        assert g.to_adjacency_matrix() == g.A
+
+
+class TestFlowGraphIO:
+    def test_from_edge_list(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph.from_edge_list([(a, b, 10), (b, c, 5)])
+        assert g.num_edges == 2
+        assert g.get_edge(a, b).capacity == 10
+
+    def test_from_edge_list_string_labels(self):
+        g = FlowGraph.from_edge_list([("s", "a", 10), ("a", "t", 5)])
+        assert g.num_edges == 2
+
+    def test_to_edge_list(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        edges = g.to_edge_list()
+        assert len(edges) == 2
+        assert ("a", "b", 10) in edges
+        assert ("b", "c", 5) in edges
+
+    def test_to_json_from_json_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        g2 = FlowGraph.from_json(g.to_json())
+        assert g2.num_edges == 2
+        assert g2.get_edge(a, b).capacity == 10
+
+    def test_to_adjacency_matrix(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        mat = g.to_adjacency_matrix()
+        verts_list = g.vertices()
+        idx = {v.label: i for i, v in enumerate(verts_list)}
+        assert mat[idx["a"]][idx["b"]] == 10
+        assert mat[idx["b"]][idx["c"]] == 5
+        assert mat[idx["a"]][idx["c"]] is None
+
+    def test_adjacency_matrix_roundtrip(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        labels = [v.label for v in g.vertices()]
+        mat = g.to_adjacency_matrix()
+        g2 = FlowGraph.from_adjacency_matrix(mat, labels)
+        assert g2.num_edges == g.num_edges
+
+    def test_A_property(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        assert g.to_adjacency_matrix() == g.A
+
+
+class TestGraphFactoryIO:
+    def test_from_edge_list_unweighted(self):
+        g = Graph.from_edge_list([("a", "b"), ("b", "c")])
+        assert isinstance(g, UnweightedGraph)
+        assert g.num_edges == 2
+
+    def test_from_edge_list_weighted(self):
+        g = Graph.from_edge_list([("a", "b", 3), ("b", "c", 2)])
+        assert isinstance(g, WeightedGraph)
+        assert g.num_edges == 2
+
+    def test_from_dot_unweighted(self, verts):
+        a, b, c, _ = verts
+        dot = UnweightedGraph(a - b - c).to_dot()
+        g = Graph.from_dot(dot)
+        assert isinstance(g, UnweightedGraph)
+
+    def test_from_dot_weighted(self, verts):
+        a, b, c, _ = verts
+        dot = WeightedGraph(a - 3 - b - 2 - c).to_dot()
+        g = Graph.from_dot(dot)
+        assert isinstance(g, WeightedGraph)
+
+    def test_from_json_unweighted(self, verts):
+        a, b, c, _ = verts
+        js = UnweightedGraph(a - b - c).to_json()
+        g = Graph.from_json(js)
+        assert isinstance(g, UnweightedGraph)
+
+    def test_from_json_weighted(self, verts):
+        a, b, c, _ = verts
+        js = WeightedGraph(a - 3 - b - 2 - c).to_json()
+        g = Graph.from_json(js)
+        assert isinstance(g, WeightedGraph)
+
+    def test_from_json_flow(self, verts):
+        a, b, c, _ = verts
+        js = FlowGraph(a >> 10 >> b >> 5 >> c).to_json()
+        g = Graph.from_json(js)
+        assert isinstance(g, FlowGraph)
+
+    def test_from_adjacency_matrix_unweighted(self):
+        m = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]
+        g = Graph.from_adjacency_matrix(m, ["a", "b", "c"])
+        assert isinstance(g, UnweightedGraph)
+        assert g.num_edges == 2
+
+    def test_from_adjacency_matrix_weighted(self):
+        m = [[None, 3, None], [3, None, 2], [None, 2, None]]
+        g = Graph.from_adjacency_matrix(m, ["a", "b", "c"])
+        assert isinstance(g, WeightedGraph)
+        assert g.get_edge(Vertex("a"), Vertex("b")).weight == 3

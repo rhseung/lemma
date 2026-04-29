@@ -81,6 +81,7 @@ ignore = [
     "PLR0911", # too many return statements
     "PLR0912", # too many branches
     "PLR0915", # too many statements
+    "N802",    # function name should be lowercase (수학 표기 허용: .A, .D, .L)
     "N803",    # argument name should be lowercase (수학 변수명 허용: N, M, K)
     "N806",    # variable should be lowercase (같은 이유)
 ]

@@ -2,18 +2,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal
 
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.endpoints import HasEndpoints
 
 if TYPE_CHECKING:
-    from core.graph.graph.flow import FlowGraph
-    from core.graph.graph.unweighted import UnweightedGraph
-    from core.graph.graph.weighted import WeightedGraph
     from core.graph.primitives.edge import Edge, WeightedEdge
     from core.graph.primitives.vertex import Vertex
-    from core.graph.primitives.weight import Weight
     from core.graph.walk import Walk, WeightedWalk
 
 
@@ -81,6 +77,52 @@ class _AbstractGraph[E: HasEndpoints](ABC):
         """그래프의 간선 수."""
         ...
 
+    @classmethod
+    @abstractmethod
+    def from_edge_list(cls, edges: list, *, kind: EdgeKind = EdgeKind.UNDIRECTED) -> _AbstractGraph:
+        """간선 목록으로 그래프를 생성한다."""
+        ...
+
+    @abstractmethod
+    def to_edge_list(self) -> list[tuple]:
+        """간선을 튜플 목록으로 반환한다."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def from_dot(cls, s: str) -> _AbstractGraph:
+        """DOT 문자열에서 그래프를 복원한다."""
+        ...
+
+    @abstractmethod
+    def to_dot(self) -> str:
+        """그래프를 DOT 언어 문자열로 직렬화한다."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def from_json(cls, s: str) -> _AbstractGraph:
+        """JSON 문자열에서 그래프를 복원한다."""
+        ...
+
+    @abstractmethod
+    def to_json(self) -> str:
+        """그래프를 JSON 문자열로 직렬화한다."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def from_adjacency_matrix(
+        cls, m: list[list], labels: list[str] | None = None, *, kind: EdgeKind = EdgeKind.UNDIRECTED
+    ) -> _AbstractGraph:
+        """인접 행렬에서 그래프를 생성한다."""
+        ...
+
+    @abstractmethod
+    def to_adjacency_matrix(self) -> list[list]:
+        """인접 행렬을 반환한다."""
+        ...
+
     @abstractmethod
     def _validate(self) -> None:
         """내부 자료구조의 일관성을 검증한다. 주로 테스트에서 사용한다."""
@@ -91,13 +133,21 @@ class _AbstractGraph[E: HasEndpoints](ABC):
         """Graphviz 렌더링 객체를 반환한다."""
         ...
 
-    def show(self) -> None:
-        """그래프를 PDF로 렌더링해 시스템 뷰어로 연다."""
-        self._to_graphviz().view(cleanup=True)
+    @property
+    def A(self) -> list[list]:
+        """인접 행렬. ``to_adjacency_matrix()`` 와 동일."""
+        return self.to_adjacency_matrix()
+
+    def show(self, *, format: Literal["pdf", "svg", "png"] = "png") -> None:
+        """그래프를 렌더링해 시스템 뷰어로 연다."""
+        dot = self._to_graphviz()
+        dot.format = format
+        dot.view(cleanup=True)
 
     def _repr_svg_(self) -> str:
         """Jupyter Notebook에서 SVG로 인라인 렌더링할 때 호출된다."""
-        return self._to_graphviz().pipe("svg").decode()
+        svg = self._to_graphviz().pipe("svg").decode()
+        return svg.replace("<svg ", '<svg style="background:transparent;" ', 1)
 
     def neighbors(self, v: Vertex) -> list[Vertex]:
         """정점 ``v`` 에서 이동 가능한 인접 정점들을 반환한다."""
@@ -178,42 +228,3 @@ class _AbstractGraph[E: HasEndpoints](ABC):
     def __iter__(self) -> Iterator[Vertex]:
         """``for v in graph`` 로 모든 정점을 순회한다."""
         return iter(self.vertices())
-
-
-class Graph:
-    """워크로부터 적절한 그래프 구현체를 생성하는 팩토리.
-
-    ``WeightedWalk`` 를 받으면 ``WeightedGraph``, ``flow=True`` 를 주면 ``FlowGraph``,
-    그 외에는 ``UnweightedGraph`` 를 반환한다::
-
-        a, b, c = Vertex("a"), Vertex("b"), Vertex("c")
-
-        Graph(a - b - c)  # UnweightedGraph
-        Graph(a - 3 - b - 2 - c)  # WeightedGraph[int]
-        Graph(a >> 10 >> b, flow=True)  # FlowGraph
-        Graph(kind=EdgeKind.DIRECTED)  # 빈 단방향 UnweightedGraph
-        Graph(flow=True)  # 빈 FlowGraph
-    """
-
-    @overload
-    def __new__[W: Weight](cls, walk: WeightedWalk[W], *, flow: Literal[True]) -> FlowGraph[W]: ...
-    @overload
-    def __new__(cls, walk: WeightedWalk | None = ..., *, flow: Literal[True]) -> FlowGraph: ...
-    @overload
-    def __new__[W: Weight](cls, walk: WeightedWalk[W]) -> WeightedGraph[W]: ...
-    @overload
-    def __new__(cls, walk: Walk | None = ..., *, kind: EdgeKind = ...) -> UnweightedGraph: ...
-
-    def __new__(cls, walk=None, *, kind=EdgeKind.UNDIRECTED, flow=False) -> Any:
-        from core.graph.graph.flow import FlowGraph
-        from core.graph.graph.unweighted import UnweightedGraph
-        from core.graph.graph.weighted import WeightedGraph
-        from core.graph.walk import WeightedWalk
-
-        if flow:
-            return FlowGraph(walk)
-        match walk:
-            case WeightedWalk():
-                return WeightedGraph(walk, kind=kind)
-            case _:
-                return UnweightedGraph(walk, kind=kind)

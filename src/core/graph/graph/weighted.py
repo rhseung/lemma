@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from core.graph.graph.base import _AbstractGraph
+import json as _json
+
+from core.graph.graph.abstract import _AbstractGraph
+from core.graph.io import _parse_dot
 from core.graph.primitives.edge import WeightedEdge
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.vertex import Vertex
@@ -143,6 +146,7 @@ class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
         import graphviz
 
         dot = graphviz.Graph() if self.kind == EdgeKind.UNDIRECTED else graphviz.Digraph()
+        dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
             dot.node(v.label)
         seen: set[frozenset] = set()
@@ -156,6 +160,133 @@ class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
                 attrs = {"dir": "both"} if self.kind == EdgeKind.BIDIRECTED else {}
                 dot.edge(label, e.dst.label, label=str(e.weight), **attrs)
         return dot
+
+    @classmethod
+    def from_edge_list(
+        cls,
+        edges: list[tuple[Vertex | str, Vertex | str, W]],
+        *,
+        kind: EdgeKind = EdgeKind.UNDIRECTED,
+    ) -> WeightedGraph[W]:
+        """간선 목록으로 그래프를 생성한다.
+
+        Args:
+            edges: ``(u, v, weight)`` 튜플의 목록. ``Vertex`` 또는 레이블 문자열 모두 허용.
+            kind: 간선의 방향성.
+        """
+        g = cls(kind=kind)
+        for u, v, w in edges:
+            g.add_edge(Vertex(u) if isinstance(u, str) else u, Vertex(v) if isinstance(v, str) else v, w)
+        return g
+
+    def to_edge_list(self) -> list[tuple[str, str, W]]:
+        """간선을 ``(u_label, v_label, weight)`` 튜플 목록으로 반환한다.
+
+        무방향·양방향 그래프에서는 각 간선을 한 번만 포함한다.
+        """
+        seen: set[frozenset] = set()
+        result: list[tuple[str, str, W]] = []
+        for label, edges in self._adj.items():
+            for e in edges:
+                if self.kind != EdgeKind.DIRECTED:
+                    key = frozenset((label, e.dst.label))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                result.append((label, e.dst.label, e.weight))
+        return result
+
+    def to_dot(self) -> str:
+        """그래프를 DOT 언어 문자열로 직렬화한다."""
+        return self._to_graphviz().source  # type: ignore[attr-defined]
+
+    @classmethod
+    def from_dot(cls, s: str) -> WeightedGraph:
+        """DOT 문자열에서 그래프를 복원한다.
+
+        간선 가중치는 ``label`` 속성에서 읽는다. 정수로 파싱 가능하면 ``int``, 아니면 ``float``.
+        """
+        kind, vertex_labels, edges = _parse_dot(s)
+        g = cls(kind=kind)
+        for label in vertex_labels:
+            g.add_vertex(Vertex(label))
+        for u, v, weight_str in edges:
+            if weight_str is None:
+                raise ValueError(f"edge {u!r} → {v!r} has no weight in DOT string")
+            try:
+                weight = int(weight_str)
+            except ValueError:
+                weight = float(weight_str)
+            g.add_edge(Vertex(u), Vertex(v), weight)
+        return g
+
+    def to_json(self) -> str:
+        """그래프를 JSON 문자열로 직렬화한다.
+
+        가중치는 JSON으로 직렬화 가능한 타입(``int``, ``float``)이어야 한다.
+        """
+        return _json.dumps({
+            "type": "WeightedGraph",
+            "kind": self.kind.name.lower(),
+            "vertices": [v.label for v in self.vertices()],
+            "edges": self.to_edge_list(),
+        })
+
+    @classmethod
+    def from_json(cls, s: str) -> WeightedGraph:
+        """JSON 문자열에서 그래프를 복원한다."""
+        data = _json.loads(s)
+        kind = EdgeKind[data["kind"].upper()]
+        g = cls(kind=kind)
+        for label in data["vertices"]:
+            g.add_vertex(Vertex(label))
+        for u, v, w in data["edges"]:
+            g.add_edge(Vertex(u), Vertex(v), w)
+        return g
+
+    def to_adjacency_matrix(self) -> list[list[W | None]]:
+        """인접 행렬을 반환한다. 행·열 순서는 ``vertices()``와 동일하다.
+
+        간선이 있으면 가중치, 없으면 ``None``.
+        """
+        verts = self.vertices()
+        idx = {v.label: i for i, v in enumerate(verts)}
+        n = len(verts)
+        mat: list[list[W | None]] = [[None] * n for _ in range(n)]
+        for label, edges in self._adj.items():
+            for e in edges:
+                mat[idx[label]][idx[e.dst.label]] = e.weight
+        return mat
+
+    @classmethod
+    def from_adjacency_matrix(
+        cls,
+        m: list[list[W | None]],
+        labels: list[str] | None = None,
+        *,
+        kind: EdgeKind = EdgeKind.UNDIRECTED,
+    ) -> WeightedGraph[W]:
+        """인접 행렬에서 그래프를 생성한다.
+
+        Args:
+            m: n x n 행렬. ``None``이면 간선 없음, 그 외 값은 간선의 가중치.
+            labels: 정점 레이블 목록. ``None``이면 ``"0"``, ``"1"``, ... 을 사용.
+            kind: 간선의 방향성.
+        """
+        n = len(m)
+        if labels is None:
+            labels = [str(i) for i in range(n)]
+        verts = [Vertex(label) for label in labels]
+        g = cls(kind=kind)
+        for v in verts:
+            g.add_vertex(v)
+        for i in range(n):
+            for j in range(n):
+                if m[i][j] is not None:
+                    if kind != EdgeKind.DIRECTED and j < i:
+                        continue  # 무방향·양방향은 상삼각만 처리 (add_edge가 역방향 자동 추가)
+                    g.add_edge(verts[i], verts[j], m[i][j])
+        return g
 
     def __repr__(self) -> str:
         return f"WeightedGraph({self.kind.name.lower()}, V={self.num_vertices}, E={self.num_edges})"
