@@ -546,6 +546,356 @@ class TestFlowGraphIO:
         assert g.to_adjacency_matrix() == g.A
 
 
+class TestUnweightedGraphDSL:
+    def test_delete_vertex_removes_edges(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g.delete_vertex(b)
+        assert not g.has_vertex(b)
+        assert g.num_vertices == 2
+        assert g.num_edges == 0
+
+    def test_delete_vertex_not_found(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        with pytest.raises(KeyError):
+            g.delete_vertex(Vertex("z"))
+
+    def test_delete_edge_undirected(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g.delete_edge(a, b)
+        assert not g.has_edge(a, b)
+        assert not g.has_edge(b, a)
+        assert g.num_vertices == 3
+        assert g.num_edges == 1
+
+    def test_delete_edge_not_found(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        with pytest.raises(KeyError):
+            g.delete_edge(a, c)
+
+    def test_reverse_directed(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a >> b >> c)
+        r = g.reverse()
+        assert r.has_edge(b, a)
+        assert r.has_edge(c, b)
+        assert not r.has_edge(a, b)
+        assert g.has_edge(a, b)  # original unchanged
+
+    def test_reverse_undirected_raises(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        with pytest.raises(ValueError):
+            g.reverse()
+
+    def test_neg_operator(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a >> b >> c)
+        r = -g
+        assert r.has_edge(b, a)
+        assert not r.has_edge(a, b)
+
+    def test_complement(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        comp = g.complement()
+        assert comp.has_edge(a, c)
+        assert not comp.has_edge(a, b)
+        assert not comp.has_edge(b, c)
+
+    def test_invert_operator(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        comp = ~g
+        assert comp.has_edge(a, c)
+        assert not comp.has_edge(a, b)
+
+    def test_iadd_vertex(self, verts):
+        a, b, c, d = verts
+        g = UnweightedGraph(a - b - c)
+        g += d
+        assert g.has_vertex(d)
+        assert g.num_vertices == 4
+
+    def test_iadd_walk(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g += (a - b - c)
+        assert g.has_edge(a, b)
+        assert g.has_edge(b, c)
+
+    def test_isub_vertex(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g -= b
+        assert not g.has_vertex(b)
+        assert g.num_edges == 0
+
+    def test_isub_walk(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g -= (a - b)
+        assert not g.has_edge(a, b)
+        assert g.has_edge(b, c)
+
+    def test_union(self, verts):
+        a, b, c, d = verts
+        g1 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g1.add_edge(a, b)
+        g2 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g2.add_edge(c, d)
+        g3 = g1.union(g2)
+        assert g3.has_edge(a, b)
+        assert g3.has_edge(c, d)
+        assert g3.num_edges == 2
+
+    def test_disjoint_union_conflict_raises(self, verts):
+        a, b, c, _ = verts
+        g1 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g1.add_edge(a, b)
+        g2 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g2.add_edge(b, c)
+        with pytest.raises(ValueError):
+            g1.disjoint_union(g2)
+
+    def test_add_graphs(self, verts):
+        a, b, c, d = verts
+        g1 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g1.add_edge(a, b)
+        g2 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g2.add_edge(c, d)
+        g3 = g1 + g2
+        assert g3.num_edges == 2
+        assert g1.num_edges == 1  # original unchanged
+
+    def test_add_vertex(self, verts):
+        a, b, c, d = verts
+        g = UnweightedGraph(a - b - c)
+        g2 = g + d
+        assert g2.has_vertex(d)
+        assert not g.has_vertex(d)  # original unchanged
+
+    def test_sub_vertex(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g2 = g - b
+        assert not g2.has_vertex(b)
+        assert g.has_vertex(b)  # original unchanged
+
+    def test_sub_walk(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        g2 = g - (a - b)
+        assert not g2.has_edge(a, b)
+        assert g2.has_edge(b, c)
+        assert g.has_edge(a, b)  # original unchanged
+
+    def test_or_operator(self, verts):
+        a, b, c, d = verts
+        g1 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g1.add_edge(a, b)
+        g2 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g2.add_edge(c, d)
+        g3 = g1 | g2
+        assert g3.num_vertices == 4
+        assert g3.num_edges == 2
+
+    def test_or_conflict_raises(self, verts):
+        a, b, c, _ = verts
+        g1 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g1.add_edge(a, b)
+        g2 = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g2.add_edge(b, c)
+        with pytest.raises(ValueError):
+            g1 | g2
+
+    def test_getitem_vertex(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        assert set(g[b]) == {a, c}  # type: ignore[arg-type]
+
+    def test_getitem_edge(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        e = g[a, b]
+        assert e.src == a  # type: ignore[union-attr]
+        assert e.dst == b  # type: ignore[union-attr]
+
+
+class TestWeightedGraphDSL:
+    def test_delete_vertex(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        g.delete_vertex(b)
+        assert not g.has_vertex(b)
+        assert g.num_edges == 0
+
+    def test_delete_vertex_not_found(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        with pytest.raises(KeyError):
+            g.delete_vertex(Vertex("z"))
+
+    def test_delete_edge(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        g.delete_edge(a, b)
+        assert not g.has_edge(a, b)
+        assert g.num_edges == 1
+
+    def test_delete_edge_not_found(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        with pytest.raises(KeyError):
+            g.delete_edge(a, c)
+
+    def test_reverse(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a >> 3 >> b >> 2 >> c)
+        r = g.reverse()
+        assert r.has_edge(b, a)
+        assert r.get_edge(b, a).weight == 3
+        assert not r.has_edge(a, b)
+        assert g.has_edge(a, b)  # original unchanged
+
+    def test_reverse_undirected_raises(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        with pytest.raises(ValueError):
+            g.reverse()
+
+    def test_set_edge_new(self, verts):
+        a, b, _, _ = verts
+        g = WeightedGraph[int](kind=EdgeKind.DIRECTED)
+        g.set_edge(a, b, 5)
+        assert g.get_edge(a, b).weight == 5
+
+    def test_set_edge_overwrite(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        g.set_edge(a, b, 99)
+        assert g.get_edge(a, b).weight == 99
+        assert g.num_edges == 2
+
+    def test_setitem(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        g[a, b] = 99
+        assert g.get_edge(a, b).weight == 99
+        assert g.num_edges == 2
+
+    def test_iadd_vertex(self, verts):
+        a, b, c, d = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        g += d
+        assert g.has_vertex(d)
+        assert g.num_vertices == 4
+
+    def test_iadd_walk(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph[int](kind=EdgeKind.UNDIRECTED)
+        g += (a - 3 - b - 2 - c)
+        assert g.has_edge(a, b)
+        assert g.get_edge(a, b).weight == 3
+
+    def test_union(self, verts):
+        a, b, c, d = verts
+        g1 = WeightedGraph[int](kind=EdgeKind.UNDIRECTED)
+        g1.add_edge(a, b, 3)
+        g2 = WeightedGraph[int](kind=EdgeKind.UNDIRECTED)
+        g2.add_edge(c, d, 5)
+        g3 = g1 + g2
+        assert g3.has_edge(a, b)
+        assert g3.has_edge(c, d)
+        assert g3.get_edge(c, d).weight == 5
+
+    def test_getitem_vertex(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        assert set(g[b]) == {a, c}  # type: ignore[arg-type]
+
+    def test_getitem_edge(self, verts):
+        a, b, c, _ = verts
+        g = WeightedGraph(a - 3 - b - 2 - c)
+        e = g[a, b]
+        assert e.weight == 3  # type: ignore[union-attr]
+
+
+class TestFlowGraphDSL:
+    def test_delete_edge(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        g.delete_edge(a, b)
+        assert not g.has_edge(a, b)
+        assert g.num_edges == 1
+        g._validate()
+
+    def test_delete_edge_not_found(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        with pytest.raises(KeyError):
+            g.delete_edge(a, c)
+
+    def test_delete_vertex(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        g.delete_vertex(b)
+        assert not g.has_vertex(b)
+        assert g.num_edges == 0
+        g._validate()
+
+    def test_delete_vertex_not_found(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        with pytest.raises(KeyError):
+            g.delete_vertex(Vertex("z"))
+
+    def test_reverse(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        r = g.reverse()
+        assert r.has_edge(b, a)
+        assert r.get_edge(b, a).capacity == 10
+        assert not r.has_edge(a, b)
+        assert g.has_edge(a, b)  # original unchanged
+
+    def test_iadd_vertex(self, verts):
+        a, b, c, d = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        g += d
+        assert g.has_vertex(d)
+        assert g.num_edges == 2
+
+    def test_iadd_flow_edge(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, 10)
+        fwd = g.get_edge(a, b)
+        g2 = FlowGraph()
+        g2 += fwd
+        assert g2.has_edge(a, b)
+        assert g2.get_edge(a, b).capacity == 10
+
+    def test_set_capacity(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        fwd = g.get_edge(a, b)
+        fwd.flow = 4
+        g.set_capacity(a, b, 20)
+        assert g.get_edge(a, b).capacity == 20
+        assert g.get_edge(a, b).flow == 4  # flow preserved
+
+    def test_setitem(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        g[a, b] = 99
+        assert g.get_edge(a, b).capacity == 99
+        g._validate()
+
+
 class TestGraphFactoryIO:
     def test_from_edge_list_unweighted(self):
         g = Graph.from_edge_list([("a", "b"), ("b", "c")])

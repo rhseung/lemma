@@ -113,6 +113,76 @@ class UnweightedGraph(_AbstractGraph[Edge]):
             if v.label in nbrs
         ]
 
+    def delete_vertex(self, v: Vertex) -> None:
+        """정점과 인접 간선을 모두 제거한다. 없으면 ``KeyError``."""
+        if not self.has_vertex(v):
+            raise KeyError(f"Vertex {v!r} not found")
+        label = v.label
+        for other_label in self._adj:
+            if other_label != label:
+                self._adj[other_label] = [l for l in self._adj[other_label] if l != label]
+        del self._adj[label]
+        del self._vertices[label]
+
+    def delete_edge(self, u: Vertex, v: Vertex) -> None:
+        """``u``, ``v`` 를 잇는 간선을 제거한다. 없으면 ``KeyError``."""
+        if not self.has_edge(u, v):
+            raise KeyError(f"Edge ({u!r}, {v!r}) not found")
+        self._adj[u.label].remove(v.label)
+        if self.kind != EdgeKind.DIRECTED:
+            self._adj[v.label].remove(u.label)
+
+    def reverse(self) -> UnweightedGraph:
+        """모든 간선 방향을 반전한 새 그래프를 반환한다. ``DIRECTED`` 전용."""
+        if self.kind != EdgeKind.DIRECTED:
+            raise ValueError("reverse() requires a directed graph")
+        g = UnweightedGraph(kind=EdgeKind.DIRECTED)
+        for v in self.vertices():
+            g.add_vertex(v)
+        for v in self.vertices():
+            for e in self.out_edges(v):
+                g.add_edge(e.dst, e.src)
+        return g
+
+    def complement(self) -> UnweightedGraph:
+        """없는 간선을 잇고 있는 간선을 제거한 여그래프를 반환한다."""
+        verts = self.vertices()
+        g = UnweightedGraph(kind=self.kind)
+        for v in verts:
+            g.add_vertex(v)
+        for i, u in enumerate(verts):
+            for j, v in enumerate(verts):
+                if u == v:
+                    continue
+                if self.kind != EdgeKind.DIRECTED and j <= i:
+                    continue
+                if not self.has_edge(u, v):
+                    g.add_edge(u, v)
+        return g
+
+    def _add_edge_from(self, edge: Edge) -> None:
+        self.add_edge(edge.src, edge.dst)
+
+    def __iadd__(self, other: object) -> UnweightedGraph:
+        """``g += v`` / ``g += edge`` / ``g += walk`` — in-place 추가."""
+        from core.graph.walk import Walk
+
+        match other:
+            case Vertex():
+                self.add_vertex(other)
+            case Edge():
+                self.add_edge(other.src, other.dst)
+            case Walk():
+                for e in other.edges:
+                    self.add_edge(e.src, e.dst)
+            case _:
+                return NotImplemented  # type: ignore[return-value]
+        return self
+
+    def __invert__(self) -> UnweightedGraph:
+        """``~g`` — :meth:`complement` 위임."""
+        return self.complement()
+
     def vertices(self) -> list[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         return list(self._vertices.values())
@@ -167,7 +237,9 @@ class UnweightedGraph(_AbstractGraph[Edge]):
         """
         g = cls(kind=kind)
         for u, v in edges:
-            g.add_edge(Vertex(u) if isinstance(u, str) else u, Vertex(v) if isinstance(v, str) else v)
+            g.add_edge(
+                Vertex(u) if isinstance(u, str) else u, Vertex(v) if isinstance(v, str) else v
+            )
         return g
 
     def to_edge_list(self) -> list[tuple[str, str]]:
@@ -204,12 +276,14 @@ class UnweightedGraph(_AbstractGraph[Edge]):
 
     def to_json(self) -> str:
         """그래프를 JSON 문자열로 직렬화한다."""
-        return _json.dumps({
-            "type": "UnweightedGraph",
-            "kind": self.kind.name.lower(),
-            "vertices": [v.label for v in self.vertices()],
-            "edges": self.to_edge_list(),
-        })
+        return _json.dumps(
+            {
+                "type": "UnweightedGraph",
+                "kind": self.kind.name.lower(),
+                "vertices": [v.label for v in self.vertices()],
+                "edges": self.to_edge_list(),
+            }
+        )
 
     @classmethod
     def from_json(cls, s: str) -> UnweightedGraph:

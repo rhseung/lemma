@@ -122,6 +122,67 @@ class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
         """
         return [(e.dst, e.weight) for e in self._adj[v.label]]
 
+    def delete_vertex(self, v: Vertex) -> None:
+        """정점과 인접 간선을 모두 제거한다. 없으면 ``KeyError``."""
+        if not self.has_vertex(v):
+            raise KeyError(f"Vertex {v!r} not found")
+        label = v.label
+        for other_label in self._adj:
+            if other_label != label:
+                self._adj[other_label] = [e for e in self._adj[other_label] if e.dst.label != label]
+        del self._adj[label]
+        del self._vertices[label]
+
+    def delete_edge(self, u: Vertex, v: Vertex) -> None:
+        """``u``, ``v`` 를 잇는 간선을 제거한다. 없으면 ``KeyError``."""
+        if not self.has_edge(u, v):
+            raise KeyError(f"Edge ({u!r}, {v!r}) not found")
+        self._adj[u.label] = [e for e in self._adj[u.label] if e.dst != v]
+        if self.kind != EdgeKind.DIRECTED:
+            self._adj[v.label] = [e for e in self._adj[v.label] if e.dst != u]
+
+    def reverse(self) -> WeightedGraph[W]:
+        """모든 간선 방향을 반전한 새 그래프를 반환한다. ``DIRECTED`` 전용."""
+        if self.kind != EdgeKind.DIRECTED:
+            raise ValueError("reverse() requires a directed graph")
+        g: WeightedGraph[W] = WeightedGraph(kind=EdgeKind.DIRECTED)
+        for v in self.vertices():
+            g.add_vertex(v)
+        for v in self.vertices():
+            for e in self.out_edges(v):
+                g.add_edge(e.dst, e.src, e.weight)
+        return g
+
+    def set_edge(self, u: Vertex, v: Vertex, weight: W) -> None:
+        """간선 가중치를 추가하거나 덮어쓴다."""
+        if self.has_edge(u, v):
+            self.delete_edge(u, v)
+        self.add_edge(u, v, weight)
+
+    def _add_edge_from(self, edge: WeightedEdge[W]) -> None:
+        self.add_edge(edge.src, edge.dst, edge.weight)
+
+    def __iadd__(self, other: object) -> WeightedGraph[W]:
+        """``g += v`` / ``g += weighted_edge`` / ``g += weighted_walk`` — in-place 추가."""
+        from core.graph.walk import WeightedWalk
+
+        match other:
+            case Vertex():
+                self.add_vertex(other)
+            case WeightedEdge():
+                self.add_edge(other.src, other.dst, other.weight)
+            case WeightedWalk():
+                for e in other.edges:
+                    self.add_edge(e.src, e.dst, e.weight)
+            case _:
+                return NotImplemented  # type: ignore[return-value]
+        return self
+
+    def __setitem__(self, key: tuple[Vertex, Vertex], weight: W) -> None:
+        """``g[u, v] = w`` — :meth:`set_edge` 위임."""
+        u, v = key
+        self.set_edge(u, v, weight)
+
     def vertices(self) -> list[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         return list(self._vertices.values())

@@ -127,6 +127,65 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
         """정점 ``v`` 의 모든 간선을 반환한다 (역방향 포함). Dinic 등 알고리즘에서 사용한다."""
         return self._adj[v.label]
 
+    def delete_vertex(self, v: Vertex) -> None:
+        """정점과 인접 간선을 모두 제거한다. 없으면 ``KeyError``."""
+        if not self.has_vertex(v):
+            raise KeyError(f"Vertex {v!r} not found")
+        label = v.label
+        self._num_edges -= sum(1 for e in self._adj[label] if e.forward)
+        for other_label in self._adj:
+            if other_label != label:
+                removed = sum(1 for e in self._adj[other_label] if e.dst.label == label and e.forward)
+                self._num_edges -= removed
+                self._adj[other_label] = [e for e in self._adj[other_label] if e.dst.label != label]
+        del self._adj[label]
+        del self._vertices[label]
+
+    def delete_edge(self, u: Vertex, v: Vertex) -> None:
+        """정방향 간선과 그 역방향 간선 쌍을 제거한다. 없으면 ``KeyError``."""
+        if not self.has_edge(u, v):
+            raise KeyError(f"Edge ({u!r}, {v!r}) not found")
+        fwd = self.get_edge(u, v)
+        rev = fwd.reverse_edge
+        self._adj[u.label] = [e for e in self._adj[u.label] if e is not fwd]
+        self._adj[v.label] = [e for e in self._adj[v.label] if e is not rev]
+        self._num_edges -= 1
+
+    def reverse(self) -> FlowGraph[W]:
+        """모든 간선 방향을 반전한 새 유량 그래프를 반환한다."""
+        g: FlowGraph[W] = FlowGraph()
+        for v in self.vertices():
+            g.add_vertex(v)
+        for v in self.vertices():
+            for e in self.out_edges(v):
+                g.add_edge(e.dst, e.src, e.capacity)
+        return g
+
+    def set_capacity(self, u: Vertex, v: Vertex, capacity: W) -> None:
+        """정방향 간선의 용량을 변경한다. 기존 flow는 유지된다. 없으면 ``KeyError``."""
+        self.get_edge(u, v).capacity = capacity
+
+    def __setitem__(self, key: tuple[Vertex, Vertex], capacity: W) -> None:
+        """``fg[u, v] = cap`` — :meth:`set_capacity` 위임."""
+        u, v = key
+        self.set_capacity(u, v, capacity)
+
+    def _add_edge_from(self, edge: FlowEdge[W]) -> None:
+        self.add_edge(edge.src, edge.dst, edge.capacity)
+
+    def __iadd__(self, other: object) -> FlowGraph[W]:
+        """``g += v`` / ``g += flow_edge`` — in-place 추가."""
+        from core.graph.primitives.flow_edge import FlowEdge as _FlowEdge
+
+        match other:
+            case Vertex():
+                self.add_vertex(other)
+            case _FlowEdge():
+                self.add_edge(other.src, other.dst, other.capacity)
+            case _:
+                return NotImplemented  # type: ignore[return-value]
+        return self
+
     def vertices(self) -> list[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         return list(self._vertices.values())

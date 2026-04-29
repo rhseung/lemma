@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import copy
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.endpoints import HasEndpoints
@@ -75,6 +76,26 @@ class _AbstractGraph[E: HasEndpoints](ABC):
     @abstractmethod
     def num_edges(self) -> int:
         """그래프의 간선 수."""
+        ...
+
+    @abstractmethod
+    def delete_vertex(self, v: Vertex) -> None:
+        """정점과 인접 간선을 모두 제거한다. 없으면 ``KeyError``."""
+        ...
+
+    @abstractmethod
+    def delete_edge(self, u: Vertex, v: Vertex) -> None:
+        """``u``, ``v`` 를 잇는 간선을 제거한다. 없으면 ``KeyError``."""
+        ...
+
+    @abstractmethod
+    def reverse(self) -> Self:
+        """모든 간선 방향을 반전한 새 그래프를 반환한다. ``DIRECTED`` 전용."""
+        ...
+
+    @abstractmethod
+    def _add_edge_from(self, edge: E) -> None:
+        """간선 객체로부터 그래프에 간선을 추가한다. ``union`` 내부에서 사용."""
         ...
 
     @classmethod
@@ -220,6 +241,73 @@ class _AbstractGraph[E: HasEndpoints](ABC):
                 return self.has_vertex(item)
             case _:
                 return NotImplemented
+
+    def union(self, other: Self) -> Self:
+        """두 그래프의 정점·간선 유니온을 반환한다. 간선이 겹치면 ``self`` 쪽을 유지한다."""
+        g = copy.deepcopy(self)
+        for v in other.vertices():
+            g.add_vertex(v)
+        for v in other.vertices():
+            for e in other.out_edges(v):
+                if not g.has_edge(e.src, e.dst):
+                    g._add_edge_from(e)
+        return g
+
+    def disjoint_union(self, other: Self) -> Self:
+        """두 그래프의 서로소 유니온을 반환한다. 정점 레이블이 겹치면 ``ValueError``."""
+        conflict = {v.label for v in self.vertices()} & {v.label for v in other.vertices()}
+        if conflict:
+            raise ValueError(f"disjoint_union: 레이블 충돌 {conflict}")
+        return self.union(other)
+
+    def __neg__(self) -> Self:
+        """``-g`` — :meth:`reverse` 위임."""
+        return self.reverse()
+
+    def __add__(self, other: object) -> Self:
+        """``g + v`` / ``g + edge`` / ``g + walk`` / ``g + g2`` — 새 그래프 반환."""
+        if isinstance(other, _AbstractGraph):
+            return self.union(other)  # type: ignore[return-value]
+        g = copy.deepcopy(self)
+        g += other
+        return g
+
+    def __sub__(self, other: object) -> Self:
+        """``g - v`` / ``g - edge`` / ``g - walk`` — 새 그래프 반환."""
+        g = copy.deepcopy(self)
+        g -= other
+        return g
+
+    def __or__(self, other: Self) -> Self:
+        """``g1 | g2`` — :meth:`disjoint_union` 위임."""
+        return self.disjoint_union(other)
+
+    def __isub__(self, other: object) -> Self:
+        """``g -= v`` / ``g -= edge`` / ``g -= walk`` — in-place 제거."""
+        from core.graph.primitives.edge import Edge, WeightedEdge
+        from core.graph.primitives.vertex import Vertex
+        from core.graph.walk import Walk, WeightedWalk
+
+        match other:
+            case Vertex():
+                self.delete_vertex(other)
+            case Edge() | WeightedEdge():
+                self.delete_edge(other.src, other.dst)
+            case Walk() | WeightedWalk():
+                for e in other.edges:
+                    self.delete_edge(e.src, e.dst)
+            case _:
+                return NotImplemented  # type: ignore[return-value]
+        return self
+
+    def __getitem__(self, key: object) -> object:
+        """``g[v]`` → neighbors, ``g[u, v]`` → :meth:`get_edge`."""
+        from core.graph.primitives.vertex import Vertex
+
+        if isinstance(key, Vertex):
+            return self.neighbors(key)
+        u, v = key  # type: ignore[misc]
+        return self.get_edge(u, v)
 
     def __len__(self) -> int:
         """``len(graph)`` 로 정점 수를 반환한다."""

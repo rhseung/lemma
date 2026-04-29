@@ -68,6 +68,19 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 - **Positional-only `/`**: 오버로드 시그니처 불일치 방지
 - **`__r*__` 없음**: 진입점이 항상 `Vertex`·`Walk`이라 역방향 연산자 불필요
 - **헬퍼 함수 추출 없음**: 클래스별 케이스 집합이 달라 합치면 분기가 되살아남
+- **연산자 ↔ 메서드 대응**: 모든 연산자 오버로딩은 동일한 동작의 named method를 함께 제공한다. 연산자는 syntactic sugar, 메서드는 명시적 대안.
+
+| 연산자 | 대응 메서드 |
+|--------|------------|
+| `u - v`, `u >> v`, `u & v` | `Edge(u, v, kind=...)` 직접 생성 |
+| `g + v` | `g.add_vertex(v)` |
+| `g + edge` / `g + walk` | `g.add_edge(...)` |
+| `g - v` | `g.delete_vertex(v)` |
+| `g - edge` / `g - walk` | `g.delete_edge(...)` |
+| `~g` | `g.complement()` |
+| `-g` | `g.reverse()` |
+| `g1 + g2` | `g1.union(g2)` |
+| `g1 \| g2` | `g1.disjoint_union(g2)` |
 
 ---
 
@@ -123,13 +136,18 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 | `neighbors(v)` | 인접 정점 |
 | `vertices()` | 전체 정점 |
 | `degree(v)` | 차수 |
-| `show()` | Graphviz PDF 뷰어 |
+| `show(format=)` | Graphviz 뷰어 (`"pdf"` · `"svg"` · `"png"`) |
 | `_repr_svg_()` | Jupyter 인라인 SVG 렌더링 |
 | `v in g` | 정점 포함 여부 |
 | `edge in g` | `contains_edge` 위임 |
 | `walk in g` | `contains_walk` 위임 |
 | `len(g)` | 정점 수 |
 | `for v in g` | 정점 순회 |
+| `.A` | 인접 행렬 (`to_adjacency_matrix()` 단축) |
+| `from_edge_list` / `to_edge_list` | 간선 목록 직렬화·역직렬화 |
+| `from_dot` / `to_dot` | DOT 언어 직렬화·역직렬화 |
+| `from_json` / `to_json` | JSON 직렬화·역직렬화 |
+| `from_adjacency_matrix` / `to_adjacency_matrix` | 인접 행렬 직렬화·역직렬화 |
 
 **`UnweightedGraph`**: `add_edge(u, v)` 추가
 
@@ -146,84 +164,110 @@ Graph(a >> 10 >> b, flow=True)     # → FlowGraph[int]
 Graph(flow=True)                   # → FlowGraph (빈 그래프)
 ```
 
+### 패턴 생성자 (`Graph` 팩토리)
+
+```python
+Graph.path(A, B, C, D, kind=EdgeKind.UNDIRECTED)           # 경로
+Graph.cycle(A, B, C, kind=EdgeKind.UNDIRECTED)              # 순환
+Graph.complete(A, B, C, D, kind=EdgeKind.UNDIRECTED)        # K_n
+Graph.bipartite([A, B], [C, D], kind=EdgeKind.UNDIRECTED)   # K_{m,n}
+Graph.grid(rows=3, cols=3, kind=EdgeKind.UNDIRECTED)        # 격자 (정점 자동 생성)
+Graph.star(center, A, B, C, kind=EdgeKind.UNDIRECTED)       # 별 (첫 인자가 center)
+Graph.wheel(center, A, B, C, D, kind=EdgeKind.UNDIRECTED)   # 바퀴 (첫 인자가 center)
+Graph.petersen()                                            # 페테르센 그래프 (고정)
+```
+
 ---
 
 ## 🔲 구현 예정
 
-### 자료구조 확장
-
-#### 입출력 (`core/graph/io.py`)
-```python
-UnweightedGraph.from_edge_list([(u, v), (v, w)])
-WeightedGraph.from_edge_list([(u, v, 3), (v, w, 2)])
-g.to_dot() / Graph.from_dot(s)
-g.to_json() / Graph.from_json(s)
-g.to_adjacency_matrix() / Graph.from_adjacency_matrix(m)
-g.to_edge_list() / Graph.from_edge_list(edges)
-```
-
-#### 패턴 생성자
-```python
-Graph.path(A, B, C, D)
-Graph.cycle([A, B, C])
-Graph.complete([A, B, C, D])       # K_n
-Graph.bipartite([A, B], [C, D])    # K_{m,n}
-Graph.grid(rows=3, cols=3)
-Graph.star(center=A, leaves=[B, C, D])
-Graph.wheel(n=5)
-Graph.petersen()
-```
-
-#### 그래프 변환
-```python
-g.subgraph([A, B, C])
-g.delete_vertex(A)
-g.delete_edges_where(predicate)
-g.reverse()            # Kosaraju에서 사용
-g.complement()
-g.transitive_closure()
-g.line_graph()
-g.contract(A, B)
-```
-
-#### 그래프 비교
-```python
-g1 == g2
-g1.is_isomorphic_to(g2)
-g1.is_subgraph_of(g2)
-```
+### DSL 강화
 
 #### 다중 간선 단축 표기
 ```python
-A - [B, C, D]      # A → B, A → C, A → D
-[A, B] - [C, D]    # 완전 이분 그래프
+A - [B, C, D]      # A-B, A-C, A-D 동시 생성
+[A, B] - [C, D]    # 완전 이분: A-C, A-D, B-C, B-D
+```
+
+#### 그래프 뮤테이션 연산자
+```python
+g + A              # 정점 추가 → 새 그래프 반환
+g + (A - B)        # 간선·워크 추가 → 새 그래프 반환
+g - A              # 정점 제거 (인접 간선 포함) → 새 그래프 반환
+g - (A - B)        # 간선·워크 제거 → 새 그래프 반환
+g += A             # in-place 버전
+g -= (A - B)       # in-place 버전
+```
+
+#### 단항 연산자
+```python
+~g    # 여그래프 (complement): 없는 간선을 잇고 있는 간선을 제거
+-g    # 역방향 그래프 (directed only): 모든 간선 방향 반전. Kosaraju에서 사용
+```
+
+#### 인덱싱
+```python
+g[A]         # 정점 A의 인접 정점 목록 (neighbors 단축)
+g[A, B]      # 간선 가중치 조회 (WeightedGraph 전용)
+g[A, B] = 5  # 간선 추가·수정 (WeightedGraph 전용)
 ```
 
 #### 그래프 대수 연산
 ```python
 g1 + g2    # 정점·간선 유니온
 g1 | g2    # 디스조인트 유니온
-g1 * g2    # Cartesian product
-g1 @ g2    # tensor product
 ```
 
-#### 컬렉션 인터페이스
+---
+
+### 그래프 변환
+
 ```python
-g.vertices.filter(lambda v: g.degree(v) > 3)
-g.edges.where(lambda e: e.weight < 0).map(lambda e: e.src)
-g.edges.sorted_by(lambda e: e.weight)
+g.subgraph([A, B, C])
+g.transitive_closure()
+g.line_graph()
+g.contract(A, B)
 ```
 
-#### 매트릭스 인터페이스 (`WeightedGraph` 전용)
+---
+
+### 그래프 비교
+
 ```python
-g.A          # 인접 행렬 (numpy ndarray)
-g.D          # 차수 행렬
-g.L          # 라플라시안 (D - A)
-g[A, B]      # 간선 가중치
-g[A, B] = 5  # 간선 추가/수정
+g1 == g2
+g1.is_isomorphic_to(g2)
+g1.is_subgraph_of(g2)
 ```
 
-#### 타입 정제
+---
+
+### 매트릭스 인터페이스
+
+`g.A` / `to_adjacency_matrix()` / `from_adjacency_matrix()`는 `dict[Vertex, dict[Vertex, E]]` 기반.
+값이 `E` (그래프의 간선 타입) 이므로 모든 그래프 타입에 일관되게 적용된다.
+인덱스가 아닌 정점 레이블로 직접 접근하므로 `labels` 파라미터 불필요.
+
+```python
+# UnweightedGraph (E = Edge)
+g.A[A][B]   # Edge(src=A, dst=B, kind=UNDIRECTED)
+
+# WeightedGraph[W] (E = WeightedEdge[W])
+g.A[A][B]   # WeightedEdge(src=A, dst=B, kind=UNDIRECTED, weight=5)
+
+# FlowGraph[W] (E = FlowEdge[W])
+g.A[A][B]   # FlowEdge(src=A, dst=B, capacity=10, flow=3)
+
+# 키 없음 = 간선 없음 (KeyError)
+B in g.A[A]   # 연결 여부
+
+g.D    # 차수 행렬: dict[Vertex, int]
+g.L    # 라플라시안: dict[Vertex, dict[Vertex, int]]  (WeightedGraph 전용)
+```
+
+---
+
+### 타입 정제
+
 ```python
 SimpleGraph    # 다중 간선·자기 루프 없음
 DAG            # 유향 + 비순환 보장
@@ -231,7 +275,10 @@ Tree           # 연결 + 비순환
 BipartiteGraph # 두 정점 집합 구분
 ```
 
-#### 간선 메타데이터
+---
+
+### 간선 메타데이터
+
 ```python
 A - (3, label="x") - B
 A - {"weight": 3, "color": "red"} - B
@@ -260,25 +307,35 @@ A - {"weight": 3, "color": "red"} - B
 
 ### 렌더링·시각화 (`graph/render.py`, `graph/animate.py`)
 
-#### 커스텀 스타일
+알고리즘은 결과값(`Path`, `Trail`, `Walk`, `WeightedGraph` 등)만 반환한다.
+시각화는 유저가 원본 그래프에 결과를 직접 하이라이팅하는 방식으로 제어한다.
+
+#### 하이라이팅 shortcut
+```python
+path = dijkstra(g, A, B)
+g.show(highlight=path)             # path 포함 간선·정점 자동 강조
+
+mst = kruskal(g)
+g.show(highlight=mst)              # MST 간선 강조
+
+g.show(highlight=[path1, path2])   # 여러 결과, 색 자동 배분
+```
+
+`highlight`는 `Walk`, `Path`, `Trail`, `_AbstractGraph` 를 모두 받는다.
+포함된 간선·정점을 자동으로 감지해 강조한다.
+
+#### 세밀한 커스텀 스타일
+`highlight`로 부족할 때 람다로 직접 제어한다.
+
 ```python
 from graph.render import VertexStyle, EdgeStyle
 
 g.show(
     layout="dot",
     vertex_style=lambda v: VertexStyle(color="red" if v == src else "white"),
-    edge_style=lambda e: EdgeStyle(width=3 if e in mst_edges else 1),
+    edge_style=lambda e: EdgeStyle(width=3 if e in path else 1),
 )
 g.render("out.svg")
-```
-
-#### 알고리즘 결과 시각화
-```python
-result = dijkstra(g, src=u)
-result.render("dijkstra.svg")   # 최단 경로 트리 강조
-
-mst = kruskal(g)
-mst.show()
 ```
 
 #### 단계별 애니메이션
@@ -286,6 +343,16 @@ mst.show()
 from graph.animate import animate_to_gif
 
 animate_to_gif(dijkstra_steps(g, src=u), output="dijkstra.gif", fps=2)
+```
+
+---
+
+### 컬렉션 인터페이스
+
+```python
+g.vertices.filter(lambda v: g.degree(v) > 3)
+g.edges.where(lambda e: e.weight < 0).map(lambda e: e.src)
+g.edges.sorted_by(lambda e: e.weight)
 ```
 
 ---
@@ -303,7 +370,7 @@ animate_to_gif(dijkstra_steps(g, src=u), output="dijkstra.gif", fps=2)
 
 ## 열린 질문
 
-- **MatrixGraph**: 스펙트럴 알고리즘 필요 전까지는 `to_adjacency_matrix()` 변환 함수로 대체.
+- **인접 행렬**: `dict[Vertex, dict[Vertex, E]]`로 통일. `E`는 그래프의 간선 타입 파라미터. numpy 미사용. 스펙트럴 알고리즘은 범위 밖.
 - **멀티그래프**: 현재 같은 정점 쌍에 간선 여러 개 허용. 단순 그래프 가정 알고리즘은 케이스별 처리.
 - **Semiring 추상화**: `Weight` 프로토콜로 시작. tropical semiring 등 필요 시 확장.
 - **하이퍼그래프**: 범위 밖.
