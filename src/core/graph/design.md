@@ -135,7 +135,7 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 
 **`WeightedGraph[W]`**: `add_edge(u, v, weight)`, `weighted_neighbors(v)` 추가
 
-**`FlowGraph[W]`**: `add_edge(u, v, capacity)`, `flow_edges(v)` 추가. 항상 `DIRECTED`. 역방향 간선 자동 관리
+**`FlowGraph[W]`**: `add_edge(u, v, capacity)`, `edges(v)` 추가. 항상 `DIRECTED`. 역방향 간선 자동 관리
 
 **`Graph` 팩토리**: 워크 타입과 `flow` 플래그로 구현체를 자동 추론
 

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from core.graph.primitives.edge_kind import EdgeKind
+from core.graph.primitives.endpoints import HasEndpoints
 
 if TYPE_CHECKING:
     from core.graph.graph.flow import FlowGraph
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from core.graph.walk import Walk, WeightedWalk
 
 
-class _AbstractGraph[E](ABC):
+class _AbstractGraph[E: HasEndpoints](ABC):
     """모든 그래프 구현체의 공통 인터페이스를 정의하는 추상 기반 클래스.
 
     ``UnweightedGraph`` 와 ``WeightedGraph`` 가 이 클래스를 상속받는다.
@@ -54,12 +55,17 @@ class _AbstractGraph[E](ABC):
         ...
 
     @abstractmethod
-    def neighbors(self, v: Vertex) -> Iterable[Vertex]:
-        """정점 ``v`` 에서 이동 가능한 인접 정점들을 반환한다."""
+    def out_edges(self, v: Vertex) -> list[E]:
+        """정점 ``v`` 에서 나가는 간선들을 반환한다."""
         ...
 
     @abstractmethod
-    def vertices(self) -> Iterable[Vertex]:
+    def in_edges(self, v: Vertex) -> list[E]:
+        """정점 ``v`` 로 들어오는 간선들을 반환한다."""
+        ...
+
+    @abstractmethod
+    def vertices(self) -> list[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         ...
 
@@ -93,12 +99,24 @@ class _AbstractGraph[E](ABC):
         """Jupyter Notebook에서 SVG로 인라인 렌더링할 때 호출된다."""
         return self._to_graphviz().pipe("svg").decode()
 
+    def neighbors(self, v: Vertex) -> list[Vertex]:
+        """정점 ``v`` 에서 이동 가능한 인접 정점들을 반환한다."""
+        return [e.dst for e in self.out_edges(v)]
+
+    def out_degree(self, v: Vertex) -> int:
+        """정점 ``v`` 의 진출 차수(out-degree)를 반환한다."""
+        return len(self.out_edges(v))
+
+    def in_degree(self, v: Vertex) -> int:
+        """정점 ``v`` 의 진입 차수(in-degree)를 반환한다."""
+        return len(self.in_edges(v))
+
     def degree(self, v: Vertex) -> int:
-        """정점 ``v`` 의 차수(degree)를 반환한다.
+        """정점 ``v`` 의 차수를 반환한다.
 
         무방향 그래프에서는 연결된 간선 수, 단방향 그래프에서는 진출 차수(out-degree)다.
         """
-        return sum(1 for _ in self.neighbors(v))
+        return self.out_degree(v)
 
     def contains_edge(self, edge: Edge | WeightedEdge) -> bool:
         """간선의 kind와 (있다면) weight까지 엄격하게 비교해 포함 여부를 반환한다."""

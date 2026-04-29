@@ -76,11 +76,12 @@ if __name__ == "__main__":
     flow.add_edge(a, t, capacity=6)
     flow.add_edge(b, t, capacity=9)
     print(flow)
-    print(f"neighbors(s) before flow: {list(flow.neighbors(s))}")
+    print(f"neighbors(s): {list(flow.neighbors(s))}")
+    print(f"neighbors_residual(s) before flow: {list(flow.neighbors_residual(s))}")
 
-    fwd = flow.flow_edges(s)[0]
+    fwd = flow.edges(s)[0]
     fwd.flow = 10.0
-    print(f"neighbors(s) after saturating s→a: {list(flow.neighbors(s))}")
+    print(f"neighbors_residual(s) after saturating s→a: {list(flow.neighbors_residual(s))}")
 
     rev = fwd.reverse_edge
     assert rev is not None

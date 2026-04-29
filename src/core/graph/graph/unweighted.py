@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 from core.graph.graph.base import _AbstractGraph
 from core.graph.primitives.edge import Edge
 from core.graph.primitives.edge_kind import EdgeKind
@@ -98,11 +96,21 @@ class UnweightedGraph(_AbstractGraph[Edge]):
             raise KeyError(f"Edge ({u}, {v}) not found")
         return Edge(u, v, self.kind)
 
-    def neighbors(self, v: Vertex) -> Iterable[Vertex]:
-        """정점 ``v`` 에서 이동 가능한 인접 정점들을 반환한다."""
-        return [self._vertices[label] for label in self._adj[v.label]]
+    def out_edges(self, v: Vertex) -> list[Edge]:
+        """정점 ``v`` 에서 나가는 간선들을 반환한다."""
+        return [Edge(v, self._vertices[label], self.kind) for label in self._adj[v.label]]
 
-    def vertices(self) -> Iterable[Vertex]:
+    def in_edges(self, v: Vertex) -> list[Edge]:
+        """정점 ``v`` 로 들어오는 간선들을 반환한다."""
+        if self.kind != EdgeKind.DIRECTED:
+            return [Edge(self._vertices[label], v, self.kind) for label in self._adj[v.label]]
+        return [
+            Edge(self._vertices[u_label], v, self.kind)
+            for u_label, nbrs in self._adj.items()
+            if v.label in nbrs
+        ]
+
+    def vertices(self) -> list[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         return list(self._vertices.values())
 
@@ -141,4 +149,6 @@ class UnweightedGraph(_AbstractGraph[Edge]):
         return dot
 
     def __repr__(self) -> str:
-        return f"UnweightedGraph({self.kind.name.lower()}, V={self.num_vertices}, E={self.num_edges})"
+        return (
+            f"UnweightedGraph({self.kind.name.lower()}, V={self.num_vertices}, E={self.num_edges})"
+        )

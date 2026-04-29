@@ -267,7 +267,7 @@ class TestFlowGraph:
         a, b, _, _ = verts
         g = FlowGraph()
         g.add_edge(a, b, capacity=10)
-        edges = g.flow_edges(b)
+        edges = g.edges(b)
         rev = next(e for e in edges if e.dst == a)
         assert rev.capacity == 0.0
         assert not rev._forward
@@ -276,7 +276,7 @@ class TestFlowGraph:
         a, b, _, _ = verts
         g = FlowGraph()
         g.add_edge(a, b, capacity=10)
-        fwd = g.flow_edges(a)[0]
+        fwd = g.edges(a)[0]
         assert fwd.reverse_edge is not None
         assert fwd.reverse_edge.reverse_edge is fwd
 
@@ -284,18 +284,26 @@ class TestFlowGraph:
         a, b, _, _ = verts
         g = FlowGraph()
         g.add_edge(a, b, capacity=10)
-        fwd = g.flow_edges(a)[0]
+        fwd = g.edges(a)[0]
         assert fwd.residual == 10.0
         fwd.flow = 4.0
         assert fwd.residual == 6.0
 
-    def test_neighbors_positive_residual_only(self, verts):
+    def test_neighbors_all_forward(self, verts):
         a, b, _, _ = verts
         g = FlowGraph()
         g.add_edge(a, b, capacity=10)
-        fwd = g.flow_edges(a)[0]
+        fwd = g.edges(a)[0]
         fwd.flow = 10.0
-        assert list(g.neighbors(a)) == []
+        assert list(g.neighbors(a)) == [b]
+
+    def test_neighbors_residual_positive_residual_only(self, verts):
+        a, b, _, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, capacity=10)
+        fwd = g.edges(a)[0]
+        fwd.flow = 10.0
+        assert list(g.neighbors_residual(a)) == []
 
     def test_validate_passes(self, verts):
         a, b, c, _ = verts

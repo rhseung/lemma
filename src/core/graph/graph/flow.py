@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 from core.graph.graph.base import _AbstractGraph
@@ -105,18 +104,28 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
                     return e
         raise KeyError(f"Edge {u} → {v} not found")
 
-    def neighbors(self, v: Vertex) -> Iterable[Vertex]:
-        """잔여 용량이 있는 인접 정점을 반환한다."""
+    def out_edges(self, v: Vertex) -> list[FlowEdge[W]]:
+        """정점 ``v`` 에서 나가는 정방향 간선들을 반환한다."""
+        return [e for e in self._adj[v.label] if e.forward]
+
+    def in_edges(self, v: Vertex) -> list[FlowEdge[W]]:
+        """정점 ``v`` 로 들어오는 정방향 간선들을 반환한다."""
+        result = []
+        for e in self._adj[v.label]:
+            if not e.forward:
+                assert e.reverse_edge is not None
+                result.append(e.reverse_edge)
+        return result
+
+    def neighbors_residual(self, v: Vertex) -> list[Vertex]:
+        """잔여 용량이 있는 인접 정점을 반환한다. 최대 유량 알고리즘에서 사용한다."""
         return [e.dst for e in self._adj[v.label] if e.flow < e.capacity]
 
-    def flow_edges(self, v: Vertex) -> list[FlowEdge]:
-        """정점 ``v`` 의 모든 간선을 반환한다 (잔여 용량 없는 것 포함).
-
-        Dinic 등 알고리즘이 내부적으로 사용한다.
-        """
+    def edges(self, v: Vertex) -> list[FlowEdge[W]]:
+        """정점 ``v`` 의 모든 간선을 반환한다 (역방향 포함). Dinic 등 알고리즘에서 사용한다."""
         return self._adj[v.label]
 
-    def vertices(self) -> Iterable[Vertex]:
+    def vertices(self) -> list[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         return list(self._vertices.values())
 
