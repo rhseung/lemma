@@ -10,7 +10,7 @@ from core.graph.primitives.weight import Weight
 from core.graph.walk import WeightedWalk
 
 
-class WeightedGraph[W: Weight](_AbstractGraph):
+class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
     """가중치 있는 그래프.
 
     인접 리스트 방식으로 정점과 가중 간선을 관리한다.
@@ -18,9 +18,9 @@ class WeightedGraph[W: Weight](_AbstractGraph):
 
         a, b, c = Vertex("a"), Vertex("b"), Vertex("c")
 
-        g = WeightedGraph(a - 3 - b - 2 - c)        # WeightedWalk로부터 생성
+        g = WeightedGraph(a - 3 - b - 2 - c)  # WeightedWalk로부터 생성
         g = WeightedGraph[int](kind=EdgeKind.DIRECTED)  # 빈 단방향 정수 가중 그래프
-        g.add_edge(a, b, 7)                          # 수동으로 간선 추가
+        g.add_edge(a, b, 7)  # 수동으로 간선 추가
 
     Attributes:
         kind: 그래프의 간선 방향성 종류.
@@ -41,7 +41,22 @@ class WeightedGraph[W: Weight](_AbstractGraph):
 
         if walk is not None:
             for edge in walk.edges:
-                self.add_edge(edge.src, edge.dst, edge.weight)  # type: ignore[arg-type]
+                self.add_edge(edge.src, edge.dst, edge.weight)
+
+    @property
+    def num_vertices(self) -> int:
+        """그래프의 정점 수."""
+        return len(self._vertices)
+
+    @property
+    def num_edges(self) -> int:
+        """그래프의 간선 수.
+
+        단방향 그래프에서는 방향 있는 간선 수를 그대로 반환하고,
+        무방향·양방향 그래프에서는 양방향으로 저장된 값을 2로 나눠 반환한다.
+        """
+        total = sum(len(edges) for edges in self._adj.values())
+        return total if self.kind == EdgeKind.DIRECTED else total // 2
 
     def add_vertex(self, v: Vertex) -> None:
         """정점을 그래프에 추가한다. 이미 존재하면 아무것도 하지 않는다."""
@@ -53,10 +68,9 @@ class WeightedGraph[W: Weight](_AbstractGraph):
         """정점이 그래프에 존재하면 ``True`` 를 반환한다."""
         return v.label in self._vertices
 
-    def _has_edge(self, u: Vertex, v: Vertex) -> bool:
-        if not (self.has_vertex(u) and self.has_vertex(v)):
-            return False
-        return any(e.dst == v for e in self._adj[u.label])
+    def get_vertex(self, label: str) -> Vertex:
+        """레이블로 정점 객체를 반환한다. 없으면 ``KeyError``."""
+        return self._vertices[label]
 
     def add_edge(self, u: Vertex, v: Vertex, weight: W) -> None:
         """가중 간선을 그래프에 추가한다.
@@ -75,6 +89,20 @@ class WeightedGraph[W: Weight](_AbstractGraph):
         if self.kind != EdgeKind.DIRECTED:
             self._adj[v.label].append(WeightedEdge(v, u, self.kind, weight))
 
+    def has_edge(self, u: Vertex, v: Vertex) -> bool:
+        """``u``, ``v`` 를 잇는 간선이 그래프에 존재하면 ``True`` 를 반환한다."""
+        if not (self.has_vertex(u) and self.has_vertex(v)):
+            return False
+        return any(e.dst == v for e in self._adj[u.label])
+
+    def get_edge(self, u: Vertex, v: Vertex) -> WeightedEdge[W]:
+        """``u``, ``v`` 를 잇는 간선 객체를 반환한다. 없으면 ``KeyError``."""
+        if self.has_vertex(u):
+            for e in self._adj[u.label]:
+                if e.dst == v:
+                    return e
+        raise KeyError(f"Edge ({u}, {v}) not found")
+
     def neighbors(self, v: Vertex) -> Iterable[Vertex]:
         """정점 ``v`` 에서 이동 가능한 인접 정점들을 반환한다."""
         return [e.dst for e in self._adj[v.label]]
@@ -90,21 +118,6 @@ class WeightedGraph[W: Weight](_AbstractGraph):
     def vertices(self) -> Iterable[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         return list(self._vertices.values())
-
-    @property
-    def num_vertices(self) -> int:
-        """그래프의 정점 수."""
-        return len(self._vertices)
-
-    @property
-    def num_edges(self) -> int:
-        """그래프의 간선 수.
-
-        단방향 그래프에서는 방향 있는 간선 수를 그대로 반환하고,
-        무방향·양방향 그래프에서는 양방향으로 저장된 값을 2로 나눠 반환한다.
-        """
-        total = sum(len(edges) for edges in self._adj.values())
-        return total if self.kind == EdgeKind.DIRECTED else total // 2
 
     def _validate(self) -> None:
         """내부 인접 리스트의 일관성을 검증한다.
@@ -141,4 +154,4 @@ class WeightedGraph[W: Weight](_AbstractGraph):
         return dot
 
     def __repr__(self) -> str:
-        return f"WeightedGraph({self.kind.value}, V={self.num_vertices}, E={self.num_edges})"
+        return f"WeightedGraph({self.kind.name.lower()}, V={self.num_vertices}, E={self.num_edges})"

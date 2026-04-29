@@ -1,5 +1,5 @@
-from core.graph.graph import Graph, UnweightedGraph, WeightedGraph
-from core.graph.primitives import Edge, EdgeKind, Vertex, Weight, WeightedEdge
+from core.graph.graph import FlowGraph, Graph, UnweightedGraph, WeightedGraph
+from core.graph.primitives import Edge, EdgeKind, FlowEdge, Vertex, Weight, WeightedEdge
 from core.graph.walk import Path, Trail, Walk, WeightedWalk
 
 
@@ -10,6 +10,8 @@ def vertices(*labels: str) -> list[Vertex]:
 __all__ = [
     "Edge",
     "EdgeKind",
+    "FlowEdge",
+    "FlowGraph",
     "Graph",
     "Path",
     "Trail",

@@ -33,12 +33,13 @@ graph/                   ← 알고리즘 계층
 ### 타입 계층
 
 ```
-_AbstractGraph (ABC)
-├── UnweightedGraph
-└── WeightedGraph[W: Weight]
+_AbstractGraph[E] (ABC)
+├── UnweightedGraph          (_AbstractGraph[Edge])
+├── WeightedGraph[W: Weight] (_AbstractGraph[WeightedEdge[W]])
+└── FlowGraph[W: Weight]     (_AbstractGraph[FlowEdge[W]])
 ```
 
-가중치 유무를 타입으로 구분한다. 런타임 플래그가 아니다.
+가중치 유무와 유량 여부를 타입으로 구분한다. 런타임 플래그가 아니다.
 `dijkstra(g: WeightedGraph[W], ...)`에 무가중 그래프를 넘기면 정적으로 거부된다.
 
 ### Walk: 중간 표현 (IR)
@@ -79,8 +80,9 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 | `Vertex` | `label: str`로 식별되는 불변 정점. 연산자 오버로딩으로 간선·워크 생성 |
 | `Edge` | 무가중 간선. `(src, dst, kind)` |
 | `WeightedEdge[W]` | 가중 간선. `(src, dst, kind, weight)` |
+| `FlowEdge[W]` | 유량 간선. `(src, dst, capacity, flow)`. 생성 시 역방향 간선 자동 쌍 생성 |
 | `EdgeKind` | `UNDIRECTED / DIRECTED / BIDIRECTED` |
-| `Weight` | `__add__`, `__lt__`, `__le__`를 가지는 `@runtime_checkable` Protocol |
+| `Weight` | `__hash__`, `__eq__`, `__lt__`, `__add__`, `__sub__`를 가지는 `@total_ordering` + `@runtime_checkable` Protocol. `__lt__` 하나만 구현하면 나머지 비교 연산자 자동 생성 |
 | `_WeightedEdgeBuilder[W]` | `Vertex - weight` 중간 빌더 |
 | `_WeightedWalkBuilder[W]` | `WeightedEdge - weight` 중간 빌더 |
 
@@ -107,22 +109,25 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 
 ### 그래프 자료구조 (`core/graph/graph/`)
 
-**`_AbstractGraph` 공통 인터페이스**
+**`_AbstractGraph[E]` 공통 인터페이스**
 
 | 메서드 / 연산자 | 설명 |
 |----------------|------|
 | `add_vertex(v)` | 정점 추가 |
 | `has_vertex(v)` | 정점 존재 여부 |
-| `has_edge(u, v)` / `has_edge(edge)` | 간선 존재 여부 (정점 쌍 또는 Edge 객체) |
+| `get_vertex(label)` | 레이블로 정점 조회. 없으면 `KeyError` |
+| `has_edge(u, v)` | 간선 존재 여부 (정점 쌍) |
+| `get_edge(u, v)` | 간선 객체 조회. 없으면 `KeyError` |
+| `contains_edge(edge)` | kind·weight까지 엄격하게 비교한 간선 포함 여부 |
+| `contains_walk(walk)` | Walk의 모든 간선 존재 여부 (kind·weight 포함) |
 | `neighbors(v)` | 인접 정점 |
 | `vertices()` | 전체 정점 |
 | `degree(v)` | 차수 |
-| `contains_path(walk)` | Walk의 모든 간선 존재 여부 |
 | `show()` | Graphviz PDF 뷰어 |
 | `_repr_svg_()` | Jupyter 인라인 SVG 렌더링 |
 | `v in g` | 정점 포함 여부 |
-| `edge in g` | 간선 포함 여부 |
-| `walk in g` | Walk 포함 여부 |
+| `edge in g` | `contains_edge` 위임 |
+| `walk in g` | `contains_walk` 위임 |
 | `len(g)` | 정점 수 |
 | `for v in g` | 정점 순회 |
 
@@ -130,11 +135,15 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 
 **`WeightedGraph[W]`**: `add_edge(u, v, weight)`, `weighted_neighbors(v)` 추가
 
-**`Graph` 팩토리**: `WeightedWalk` → `WeightedGraph`, 그 외 → `UnweightedGraph` 자동 추론
+**`FlowGraph[W]`**: `add_edge(u, v, capacity)`, `flow_edges(v)` 추가. 항상 `DIRECTED`. 역방향 간선 자동 관리
+
+**`Graph` 팩토리**: 워크 타입과 `flow` 플래그로 구현체를 자동 추론
 
 ```python
-Graph(a - b - c)          # → UnweightedGraph
-Graph(a - 3 - b - 2 - c)  # → WeightedGraph[int]
+Graph(a - b - c)                   # → UnweightedGraph
+Graph(a - 3 - b - 2 - c)          # → WeightedGraph[int]
+Graph(a >> 10 >> b, flow=True)     # → FlowGraph[int]
+Graph(flow=True)                   # → FlowGraph (빈 그래프)
 ```
 
 ---
@@ -142,10 +151,6 @@ Graph(a - 3 - b - 2 - c)  # → WeightedGraph[int]
 ## 🔲 구현 예정
 
 ### 자료구조 확장
-
-#### `FlowGraph` (`core/graph/graph/flow_graph.py`)
-- 역방향 간선 자동 관리
-- Dinic, MCMF 알고리즘의 기반
 
 #### 입출력 (`core/graph/io.py`)
 ```python

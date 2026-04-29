@@ -33,10 +33,6 @@ class Edge:
     dst: Vertex
     kind: EdgeKind
 
-    def __str__(self) -> str:
-        """``src {kind} dst`` 형식의 문자열을 반환한다."""
-        return f"{self.src} {self.kind.value} {self.dst}"
-
     def __sub__(self, other: Vertex) -> Walk:
         """``-`` 연산자로 동일 방향성의 다음 간선을 이어 붙여 ``Walk`` 를 반환한다."""
         from core.graph.walk import Walk
@@ -77,6 +73,12 @@ class Edge:
             case _:
                 return NotImplemented
 
+    def __repr__(self) -> str:
+        return f"Edge({self.src} {self.kind.value} {self.dst})"
+
+    def __str__(self) -> str:
+        return f"{self.src} {self.kind.value} {self.dst}"
+
 
 @dataclass(frozen=True)
 class WeightedEdge[W: Weight]:
@@ -101,10 +103,6 @@ class WeightedEdge[W: Weight]:
     dst: Vertex
     kind: EdgeKind
     weight: W
-
-    def __str__(self) -> str:
-        """``src {kind} weight {kind} dst`` 형식의 문자열을 반환한다."""
-        return f"{self.src} {self.kind.value} {self.weight} {self.kind.value} {self.dst}"
 
     def __sub__(self, other: W) -> _WeightedWalkBuilder[W]:
         """``-`` 연산자로 다음 가중치를 받아 ``_WeightedWalkBuilder`` 를 반환한다."""
@@ -137,6 +135,12 @@ class WeightedEdge[W: Weight]:
                 return _WeightedWalkBuilder(self.dst, other, EdgeKind.BIDIRECTED, [self])
             case _:
                 return NotImplemented
+
+    def __repr__(self) -> str:
+        return f"WeightedEdge({self.src} {self.kind.value} {self.weight} {self.kind.value} {self.dst})"
+
+    def __str__(self) -> str:
+        return f"{self.src} {self.kind.value} {self.weight} {self.kind.value} {self.dst}"
 
 
 @dataclass

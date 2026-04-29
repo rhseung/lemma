@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from core.graph.graph import Graph, UnweightedGraph, WeightedGraph
+from core.graph.graph import FlowGraph, Graph, UnweightedGraph, WeightedGraph
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.vertex import Vertex
 
@@ -48,6 +48,7 @@ class TestUnweightedGraph:
         assert Vertex("z") not in g
         assert (a - b) in g
         assert (a - c) not in g
+        assert (a >> b) not in g  # edge exists but wrong kind
         assert (a - b - c) in g
         assert (a - b - c - Vertex("z")) not in g
 
@@ -62,9 +63,9 @@ class TestUnweightedGraph:
     def test_has_edge_with_edge_object(self, verts):
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
-        assert g.has_edge(a - b)
-        assert g.has_edge(b - a)
-        assert not g.has_edge(a - c)
+        assert (a - b) in g
+        assert (b - a) in g
+        assert (a - c) not in g
 
     def test_has_edge_directed(self, verts):
         a, b, c, _ = verts
@@ -127,15 +128,16 @@ class TestUnweightedGraph:
         assert g.num_edges == 0
         assert g.kind == EdgeKind.UNDIRECTED
 
-    def test_contains_path_true(self, verts):
+    def test_contains_walk_true(self, verts):
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
-        assert g.contains_path(a - b - c)
+        assert g.contains_walk(a - b - c)
 
-    def test_contains_path_false(self, verts):
+    def test_contains_walk_false(self, verts):
         a, b, c, d = verts
         g = UnweightedGraph(a - b - c)
-        assert not g.contains_path(a - b - c - d)
+        assert not g.contains_walk(a - b - c - d)
+        assert not g.contains_walk(a >> b >> c)  # kind mismatch
 
     def test_validate_passes(self, verts):
         a, b, c, _ = verts
@@ -174,9 +176,10 @@ class TestWeightedGraph:
     def test_has_edge_with_weighted_edge_object(self, verts):
         a, b, c, _ = verts
         g = WeightedGraph(a - 3 - b - 2 - c)
-        assert g.has_edge(a - 3 - b)
-        assert g.has_edge(b - 3 - a)
-        assert not g.has_edge(a - 1 - c)
+        assert (a - 3 - b) in g
+        assert (b - 3 - a) in g
+        assert (a - 1 - c) not in g
+        assert (a - 5 - b) not in g  # edge exists but wrong weight
 
     def test_weighted_neighbors(self, verts):
         a, b, c, _ = verts
@@ -204,11 +207,13 @@ class TestWeightedGraph:
         g = WeightedGraph(a >> 1 >> b >> 2 >> c)
         assert g.num_edges == 2
 
-    def test_contains_path(self, verts):
+    def test_contains_walk(self, verts):
         a, b, c, _ = verts
         g = WeightedGraph(a - 3 - b - 2 - c)
-        assert g.contains_path(a - b - c)
-        assert g.contains_path(a - 3 - b - 2 - c)
+        assert g.contains_walk(a - b - c)
+        assert g.contains_walk(a - 3 - b - 2 - c)
+        assert not g.contains_walk(a - 5 - b - 2 - c)  # weight mismatch
+        assert not g.contains_walk(a >> 3 >> b >> 2 >> c)  # kind mismatch
 
     def test_float_weights(self, verts):
         a, b, c, _ = verts
@@ -228,3 +233,83 @@ class TestWeightedGraph:
         assert "WeightedGraph" in repr(g)
         assert "V=3" in repr(g)
         assert "E=2" in repr(g)
+
+
+class TestFlowGraph:
+    def test_build_from_walk(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        assert g.num_vertices == 3
+        assert g.num_edges == 2
+
+    def test_build_empty(self):
+        g = FlowGraph()
+        assert g.num_vertices == 0
+        assert g.num_edges == 0
+        assert g.kind == EdgeKind.DIRECTED
+
+    def test_add_edge_manual(self, verts):
+        a, b, _, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, capacity=10)
+        assert g.num_vertices == 2
+        assert g.num_edges == 1
+
+    def test_has_vertex(self, verts):
+        a, b, _, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, capacity=10)
+        assert g.has_vertex(a)
+        assert g.has_vertex(b)
+        assert not g.has_vertex(Vertex("z"))
+
+    def test_reverse_edge_created(self, verts):
+        a, b, _, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, capacity=10)
+        edges = g.flow_edges(b)
+        rev = next(e for e in edges if e.dst == a)
+        assert rev.capacity == 0.0
+        assert not rev._forward
+
+    def test_rev_link_integrity(self, verts):
+        a, b, _, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, capacity=10)
+        fwd = g.flow_edges(a)[0]
+        assert fwd.reverse_edge is not None
+        assert fwd.reverse_edge.reverse_edge is fwd
+
+    def test_residual(self, verts):
+        a, b, _, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, capacity=10)
+        fwd = g.flow_edges(a)[0]
+        assert fwd.residual == 10.0
+        fwd.flow = 4.0
+        assert fwd.residual == 6.0
+
+    def test_neighbors_positive_residual_only(self, verts):
+        a, b, _, _ = verts
+        g = FlowGraph()
+        g.add_edge(a, b, capacity=10)
+        fwd = g.flow_edges(a)[0]
+        fwd.flow = 10.0
+        assert list(g.neighbors(a)) == []
+
+    def test_validate_passes(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        g._validate()
+
+    def test_repr(self, verts):
+        a, b, c, _ = verts
+        g = FlowGraph(a >> 10 >> b >> 5 >> c)
+        assert "FlowGraph" in repr(g)
+        assert "V=3" in repr(g)
+        assert "E=2" in repr(g)
+
+    def test_reject_undirected_walk(self, verts):
+        a, b, c, _ = verts
+        with pytest.raises(ValueError, match="directed"):
+            FlowGraph(a - 10 - b - 5 - c)

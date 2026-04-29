@@ -34,10 +34,6 @@ class Vertex:
 
     label: str
 
-    def __str__(self) -> str:
-        """레이블 문자열을 반환한다."""
-        return f"{self.label}"
-
     @overload
     def __sub__(self, other: Vertex) -> Edge: ...
     @overload
@@ -121,3 +117,9 @@ class Vertex:
                 return _WeightedEdgeBuilder(self, other, EdgeKind.BIDIRECTED)
             case _:
                 return NotImplemented
+
+    def __repr__(self) -> str:
+        return f"Vertex({self.label!r})"
+
+    def __str__(self) -> str:
+        return self.label

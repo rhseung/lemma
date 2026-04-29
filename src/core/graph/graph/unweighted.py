@@ -3,12 +3,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from core.graph.graph.base import _AbstractGraph
+from core.graph.primitives.edge import Edge
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.vertex import Vertex
 from core.graph.walk import Walk
 
 
-class UnweightedGraph(_AbstractGraph):
+class UnweightedGraph(_AbstractGraph[Edge]):
     """가중치 없는 그래프.
 
     인접 리스트 방식으로 정점과 간선을 관리한다.
@@ -16,9 +17,9 @@ class UnweightedGraph(_AbstractGraph):
 
         a, b, c = Vertex("a"), Vertex("b"), Vertex("c")
 
-        g = UnweightedGraph(a - b - c)          # Walk로부터 생성
+        g = UnweightedGraph(a - b - c)  # Walk로부터 생성
         g = UnweightedGraph(kind=EdgeKind.DIRECTED)  # 빈 단방향 그래프
-        g.add_edge(a, b)                        # 수동으로 간선 추가
+        g.add_edge(a, b)  # 수동으로 간선 추가
 
     Attributes:
         kind: 그래프의 간선 방향성 종류.
@@ -39,6 +40,21 @@ class UnweightedGraph(_AbstractGraph):
             for edge in walk.edges:
                 self.add_edge(edge.src, edge.dst)
 
+    @property
+    def num_vertices(self) -> int:
+        """그래프의 정점 수."""
+        return len(self._vertices)
+
+    @property
+    def num_edges(self) -> int:
+        """그래프의 간선 수.
+
+        단방향 그래프에서는 방향 있는 간선 수를 그대로 반환하고,
+        무방향·양방향 그래프에서는 양방향으로 저장된 값을 2로 나눠 반환한다.
+        """
+        total = sum(len(nbrs) for nbrs in self._adj.values())
+        return total if self.kind == EdgeKind.DIRECTED else total // 2
+
     def add_vertex(self, v: Vertex) -> None:
         """정점을 그래프에 추가한다. 이미 존재하면 아무것도 하지 않는다."""
         if v.label not in self._vertices:
@@ -49,10 +65,9 @@ class UnweightedGraph(_AbstractGraph):
         """정점이 그래프에 존재하면 ``True`` 를 반환한다."""
         return v.label in self._vertices
 
-    def _has_edge(self, u: Vertex, v: Vertex) -> bool:
-        if not (self.has_vertex(u) and self.has_vertex(v)):
-            return False
-        return v.label in self._adj[u.label]
+    def get_vertex(self, label: str) -> Vertex:
+        """레이블로 정점 객체를 반환한다. 없으면 ``KeyError``."""
+        return self._vertices[label]
 
     def add_edge(self, u: Vertex, v: Vertex) -> None:
         """간선을 그래프에 추가한다.
@@ -71,6 +86,18 @@ class UnweightedGraph(_AbstractGraph):
         if self.kind != EdgeKind.DIRECTED and u.label not in self._adj[v.label]:
             self._adj[v.label].append(u.label)
 
+    def has_edge(self, u: Vertex, v: Vertex) -> bool:
+        """``u``, ``v`` 를 잇는 간선이 그래프에 존재하면 ``True`` 를 반환한다."""
+        if not (self.has_vertex(u) and self.has_vertex(v)):
+            return False
+        return v.label in self._adj[u.label]
+
+    def get_edge(self, u: Vertex, v: Vertex) -> Edge:
+        """``u``, ``v`` 를 잇는 간선 객체를 반환한다. 없으면 ``KeyError``."""
+        if not self.has_edge(u, v):
+            raise KeyError(f"Edge ({u}, {v}) not found")
+        return Edge(u, v, self.kind)
+
     def neighbors(self, v: Vertex) -> Iterable[Vertex]:
         """정점 ``v`` 에서 이동 가능한 인접 정점들을 반환한다."""
         return [self._vertices[label] for label in self._adj[v.label]]
@@ -78,21 +105,6 @@ class UnweightedGraph(_AbstractGraph):
     def vertices(self) -> Iterable[Vertex]:
         """그래프에 포함된 모든 정점을 반환한다."""
         return list(self._vertices.values())
-
-    @property
-    def num_vertices(self) -> int:
-        """그래프의 정점 수."""
-        return len(self._vertices)
-
-    @property
-    def num_edges(self) -> int:
-        """그래프의 간선 수.
-
-        단방향 그래프에서는 방향 있는 간선 수를 그대로 반환하고,
-        무방향·양방향 그래프에서는 양방향으로 저장된 값을 2로 나눠 반환한다.
-        """
-        total = sum(len(nbrs) for nbrs in self._adj.values())
-        return total if self.kind == EdgeKind.DIRECTED else total // 2
 
     def _validate(self) -> None:
         """내부 인접 리스트의 일관성을 검증한다.
@@ -129,4 +141,4 @@ class UnweightedGraph(_AbstractGraph):
         return dot
 
     def __repr__(self) -> str:
-        return f"UnweightedGraph({self.kind.value}, V={self.num_vertices}, E={self.num_edges})"
+        return f"UnweightedGraph({self.kind.name.lower()}, V={self.num_vertices}, E={self.num_edges})"

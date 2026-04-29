@@ -67,13 +67,6 @@ class Walk:
         from core.graph.graph.unweighted import UnweightedGraph
         return UnweightedGraph(self)
 
-    def __str__(self) -> str:
-        """``a - b - c`` 형식의 문자열을 반환한다."""
-        ret = str(self.edges[0])
-        for edge in self.edges[1:]:
-            ret += f" {edge.kind.value} {edge.dst}"
-        return ret
-
     def __sub__(self, other: Vertex) -> Walk:
         """``-`` 연산자로 동일 방향성의 다음 정점을 이어 붙여 새로운 ``Walk`` 를 반환한다."""
         match other:
@@ -105,6 +98,15 @@ class Walk:
                 return Walk([*self.edges, Edge(self.edges[-1].dst, other, EdgeKind.BIDIRECTED)])
             case _:
                 return NotImplemented
+
+    def __repr__(self) -> str:
+        return f"Walk({self})"
+
+    def __str__(self) -> str:
+        ret = str(self.edges[0])
+        for edge in self.edges[1:]:
+            ret += f" {edge.kind.value} {edge.dst}"
+        return ret
 
 
 @dataclass
@@ -164,13 +166,6 @@ class WeightedWalk[W: Weight]:
         from core.graph.graph.weighted import WeightedGraph
         return WeightedGraph(self)
 
-    def __str__(self) -> str:
-        """``a - 3 - b - 2 - c`` 형식의 문자열을 반환한다."""
-        ret = str(self.edges[0])
-        for edge in self.edges[1:]:
-            ret += f" {edge.kind.value} {edge.weight} {edge.kind.value} {edge.dst}"
-        return ret
-
     def __sub__(self, other: W) -> _WeightedWalkBuilder[W]:
         """``-`` 연산자로 다음 가중치를 받아 ``_WeightedWalkBuilder`` 를 반환한다."""
         match other:
@@ -206,3 +201,12 @@ class WeightedWalk[W: Weight]:
                 return _WeightedWalkBuilder(last.dst, other, EdgeKind.BIDIRECTED, list(self.edges))
             case _:
                 return NotImplemented
+
+    def __repr__(self) -> str:
+        return f"WeightedWalk({self})"
+
+    def __str__(self) -> str:
+        ret = str(self.edges[0])
+        for edge in self.edges[1:]:
+            ret += f" {edge.kind.value} {edge.weight} {edge.kind.value} {edge.dst}"
+        return ret
