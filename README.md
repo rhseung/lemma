@@ -1,53 +1,77 @@
-# algoforge
+# arsenal
 
 ## 소개
 
-algoforge는 고전적인 자료구조와 알고리즘을 처음부터 직접 구현해보는 개인 프로젝트입니다. 모든 컨테이너, 트리, 힙, 그래프 알고리즘을 손으로 짭니다. `collections.deque`, `heapq`, `networkx` 같은 건 쓰지 않습니다. 목표는 표준 라이브러리를 이기는 게 아니라, 이 구조들이 _왜_ 이렇게 생겼는지 이해하는 것입니다.
-
-프로덕션용 성능이 필요하다면 표준 라이브러리나 `sortedcontainers`를 쓰세요. 이 레포는 내부 동작을 투명하게 보여주기 위해 존재합니다.
+arsenal은 자료구조와 알고리즘을 밑바닥부터 직접 구현하는 개인 학습 프로젝트입니다. C++ STL에 대응하는 컨테이너들을 Python으로 짜고, 그 위에 그래프·문자열·기하·정수론 등의 알고리즘을 쌓아 올립니다. `collections.deque`, `heapq`, `networkx` 같은 표준 라이브러리는 쓰지 않습니다. 목표는 이 구조들이 _왜_ 이렇게 생겼는지 이해하는 것입니다.
 
 ## 범위
 
-- **핵심 자료구조**: STL 스타일 컨테이너(동적 배열, 덱, 연결 리스트, 해시 맵), 균형 트리(RB, AVL, 트립, 스플레이, 스킵 리스트), 힙(이진, 페어링, 좌편향, 피보나치), 고전 구조(유니온 파인드, 펜윅 트리, 세그먼트 트리, 트라이).
-- **그래프 라이브러리**: 간결한 DSL을 갖춘 경량 그래프 추상화. DSL 문법은 [`src/core/graph/README.md`](src/core/graph/README.md), 세부 설계는 [`src/core/graph/design.md`](src/core/graph/design.md) 참고.
-- **알고리즘**: 그래프 알고리즘, 문자열 알고리즘, 계산 기하, 정수론, 고전 DP 패턴.
-- **시각화**: 그래프 렌더링과 알고리즘 단계별 애니메이션.
+- **자료구조**
+  - STL 스타일 컨테이너: 동적 배열, 덱, 연결 리스트, 해시 맵
+  - 균형 트리: RB 트리, AVL 트리, 트립, 스플레이 트리, 스킵 리스트
+  - 힙: 이진 힙, 페어링 힙, 좌편향 힙, 피보나치 힙
+  - 기타: 유니온 파인드, 펜윅 트리, 세그먼트 트리, 트라이
+  - 그래프: 간결한 DSL을 갖춘 경량 그래프 추상화 (Walk, Graph, FlowGraph). DSL 문법은 [`src/core/graph/README.md`](src/core/graph/README.md), 세부 설계는 [`src/core/graph/design.md`](src/core/graph/design.md) 참고.
+- **알고리즘**
+  - 그래프: BFS/DFS, 최단 경로(Dijkstra, Bellman-Ford, Floyd-Warshall), MST(Kruskal, Prim), SCC, 최대 유량, 이분 매칭
+  - 문자열: KMP, Z-알고리즘, Aho-Corasick, 접미사 배열, Manacher
+  - 계산 기하: 볼록 껍질, 최근접 점쌍, 선분 교차, CCW
+  - 정수론: 소수 체, 모듈러 산술, 빠른 거듭제곱, 확장 유클리드
+  - 동적 계획법: LIS, 배낭, 편집 거리, CHT, 분할 정복 DP, 비트마스크 DP
+  - 정렬 / 탐색: 비교 기반 정렬, 비비교 기반 정렬, 이분 탐색 변형
+  - 조합론: 이항 계수, 순열, 포함-배제 원리
+  - 선형대수: 행렬 거듭제곱, 가우스 소거
 
 ## 프로젝트 구조
 
 ```
-algoforge/
-├── README.md
-├── pyproject.toml
-├── pyrefly.toml
-├── algoforge/
-│   ├── core/                       # 자료구조
-│   │   ├── containers/             # STL 스타일 컨테이너
-│   │   ├── trees/                  # 균형 BST
-│   │   ├── heaps/
-│   │   ├── graph/                  # Graph, FlowGraph (자료구조만)
+arsenal/
+├── src/
+│   ├── core/                           # 자료구조 (알고리즘 의존 없음)
+│   │   ├── graph/                      # Walk, Graph, FlowGraph, DSL
+│   │   ├── containers/                 # STL 스타일 컨테이너 (동적 배열, 덱, 연결 리스트, 해시 맵)
+│   │   ├── trees/                      # 균형 BST (RB, AVL, 트립, 스플레이, 스킵 리스트)
+│   │   ├── heaps/                      # 힙 (이진, 페어링, 좌편향, 피보나치)
 │   │   ├── union_find.py
 │   │   ├── fenwick.py
 │   │   ├── segment_tree.py
 │   │   └── trie.py
-│   ├── graph/                      # 그래프 이론 알고리즘
-│   │   ├── traversal.py
-│   │   ├── shortest_path.py
-│   │   ├── mst.py
-│   │   ├── scc.py
-│   │   ├── flow.py
-│   │   ├── matching.py
-│   │   ├── layout.py
-│   │   ├── render.py
-│   │   └── animate.py
-│   ├── string/
-│   ├── geometry/
-│   ├── number_theory/
-│   └── dp/
-├── notes/                          # 마크다운 노트 (소스와 1:1 대응)
-├── tests/                          # pytest, brute-force 교차검증 포함
-├── benchmarks/                     # CPython vs PyPy vs 표준 라이브러리
-└── examples/                       # 시각화 노트북
+│   ├── graph/                          # 그래프 알고리즘
+│   │   ├── traversal.py                # BFS, DFS
+│   │   ├── shortest_path.py            # Dijkstra, Bellman-Ford, Floyd-Warshall
+│   │   ├── mst.py                      # Kruskal, Prim
+│   │   ├── scc.py                      # Tarjan, Kosaraju
+│   │   ├── flow.py                     # Ford-Fulkerson, Dinic
+│   │   └── matching.py                 # 이분 매칭, 헝가리안
+│   ├── string/                         # 문자열 알고리즘
+│   │   ├── kmp.py
+│   │   ├── z.py
+│   │   ├── aho_corasick.py
+│   │   ├── suffix_array.py
+│   │   └── manacher.py
+│   ├── geometry/                       # 계산 기하
+│   │   ├── convex_hull.py
+│   │   ├── closest_pair.py
+│   │   └── segment.py                  # 선분 교차, CCW
+│   ├── number_theory/                  # 정수론
+│   │   ├── sieve.py
+│   │   ├── modular.py                  # 모듈러 산술, 확장 유클리드
+│   │   └── fast_pow.py
+│   ├── dp/                             # 동적 계획법 패턴
+│   │   ├── lis.py
+│   │   ├── knapsack.py
+│   │   ├── edit_distance.py
+│   │   └── cht.py                      # Convex Hull Trick, 분할 정복 DP
+│   ├── sorting/                        # 정렬 / 이분 탐색
+│   │   ├── sorts.py                    # 비교·비비교 기반 정렬
+│   │   └── binary_search.py
+│   ├── combinatorics/                  # 조합론
+│   │   └── combinatorics.py            # 이항 계수, 순열, 포함-배제
+│   └── linalg/                         # 선형대수
+│       └── matrix.py                   # 행렬 거듭제곱, 가우스 소거
+├── tests/                              # pytest, brute-force 교차검증 포함
+├── notebooks/                          # 데모 노트북
+└── benchmarks/                         # CPython vs 표준 라이브러리
 ```
 
 설계 원칙:
@@ -56,17 +80,6 @@ algoforge/
 - 알고리즘 레이어(`graph/`, `string/` 등)는 `core/`를 import할 수 있지만, 알고리즘 레이어끼리는 서로 참조하지 않습니다.
 - 알고리즘은 메서드가 아닌 함수로 구현합니다. `g.dijkstra(src)`가 아니라 `dijkstra(g, src)`. 편의를 위해 `Graph`에 얇은 메서드 래퍼를 제공합니다.
 - 렌더링과 애니메이션은 알고리즘 로직과 분리됩니다. 단계별 시각화가 필요한 알고리즘은 제너레이터 버전(예: `dijkstra_steps`)을 따로 제공합니다.
-
-## 주제 × 패러다임 인덱스
-
-|        | 분할 정복              | 동적 계획법        | 탐욕법        | 그래프 순회        |
-| ------ | ---------------------- | ------------------ | ------------- | ------------------ |
-| 그래프 | —                      | Floyd-Warshall     | Kruskal, Prim | BFS, DFS, Dijkstra |
-| 문자열 | —                      | Edit distance      | —             | Aho-Corasick       |
-| 기하   | 최근접 점쌍, 볼록 껍질 | —                  | —             | —                  |
-| DP     | —                      | LIS, Knapsack, CHT | —             | —                  |
-
-(구현이 추가될 때마다 칸을 채워 나갑니다.)
 
 ## 도구 체계
 
@@ -87,7 +100,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 클론 및 환경 구성
 git clone <repo-url>
-cd algoforge
+cd arsenal
 uv sync
 ```
 
@@ -99,7 +112,7 @@ uv run ruff check --fix .        # 자동 수정 가능한 부분 수정
 uv run ruff format .             # 포맷
 uv run pyrefly check             # 타입 체크
 uv run pytest                    # 테스트 실행
-uv run pytest --cov=algoforge    # 커버리지 포함
+uv run pytest --cov=arsenal    # 커버리지 포함
 ```
 
 ## 테스트 철학
