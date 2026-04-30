@@ -12,11 +12,13 @@ if __name__ == "__main__":
         a - 4 - b - 2 - c - 7 - d - 1 - e - 5 - f,
         kind=g.EdgeKind.UNDIRECTED,
     )
-    wg.add_edge(a, c, 3)
-    wg.add_edge(b, d, 6)
-    wg.add_edge(c, e, 8)
-    wg.add_edge(d, f, 4)
-    wg.add_edge(a, f, 9)
-    wg.add_edge(b, e, 2)
+    wg += a - 3 - c
+    wg += b - 6 - d
+    wg += c - 8 - e
+    wg += d - 4 - f
+    wg += a - 9 - f
+    wg += b - 2 - e
 
     wg.show()
+
+    print(wg[a, c])

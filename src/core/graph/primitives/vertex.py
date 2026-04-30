@@ -44,14 +44,22 @@ class Vertex:
 
         - ``Vertex - Vertex`` → 무방향 ``Edge``
         - ``Vertex - weight`` → 도착 정점을 기다리는 ``_WeightedEdgeBuilder``
+        - ``Vertex - list[Vertex]`` / ``Vertex - VertexList`` → 스타 ``UnweightedGraph``
         """
         from core.graph.primitives.edge import Edge, _WeightedEdgeBuilder
+        from core.graph.primitives.vertex_list import VertexList
         from core.graph.primitives.weight import Weight
         match other:
             case Vertex():
                 return Edge(self, other, EdgeKind.UNDIRECTED)
             case Weight():
                 return _WeightedEdgeBuilder(self, other, EdgeKind.UNDIRECTED)
+            case list() | VertexList():
+                from core.graph.graph.unweighted import UnweightedGraph
+                g = UnweightedGraph()
+                for v in other:
+                    g.add_edge(self, v)
+                return g
             case _:
                 return NotImplemented
 
@@ -123,3 +131,8 @@ class Vertex:
 
     def __str__(self) -> str:
         return self.label
+
+
+def vertices(*labels: str) -> list[Vertex]:
+    """레이블 문자열로 ``Vertex`` 목록을 생성한다."""
+    return [Vertex(label) for label in labels]

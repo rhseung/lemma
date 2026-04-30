@@ -164,7 +164,7 @@ class UnweightedGraph(_AbstractGraph[Edge]):
         self.add_edge(edge.src, edge.dst)
 
     def __iadd__(self, other: object) -> UnweightedGraph:
-        """``g += v`` / ``g += edge`` / ``g += walk`` — in-place 추가."""
+        """``g += v`` / ``g += edge`` / ``g += walk`` / ``g += graph`` — in-place 추가."""
         from core.graph.walk import Walk
 
         match other:
@@ -175,6 +175,13 @@ class UnweightedGraph(_AbstractGraph[Edge]):
             case Walk():
                 for e in other.edges:
                     self.add_edge(e.src, e.dst)
+            case UnweightedGraph():
+                for v in other.vertices():
+                    self.add_vertex(v)
+                for v in other.vertices():
+                    for e in other.out_edges(v):
+                        if not self.has_edge(e.src, e.dst):
+                            self.add_edge(e.src, e.dst)
             case _:
                 return NotImplemented  # type: ignore[return-value]
         return self

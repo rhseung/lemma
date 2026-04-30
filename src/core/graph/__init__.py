@@ -1,11 +1,16 @@
 from core.graph.graph import FlowGraph, Graph, UnweightedGraph, WeightedGraph
-from core.graph.primitives import Edge, EdgeKind, FlowEdge, Vertex, Weight, WeightedEdge
+from core.graph.primitives import (
+    Edge,
+    EdgeKind,
+    FlowEdge,
+    Vertex,
+    VertexList,
+    Weight,
+    WeightedEdge,
+    vertices,
+    vs,
+)
 from core.graph.walk import Path, Trail, Walk, WeightedWalk
-
-
-def vertices(*labels: str) -> list[Vertex]:
-    return [Vertex(label) for label in labels]
-
 
 __all__ = [
     "Edge",
@@ -17,10 +22,12 @@ __all__ = [
     "Trail",
     "UnweightedGraph",
     "Vertex",
+    "VertexList",
     "Walk",
+    "Weight",
     "WeightedEdge",
     "WeightedGraph",
     "WeightedWalk",
-    "Weight",
     "vertices",
+    "vs",
 ]

@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from core.graph.graph import FlowGraph, Graph, UnweightedGraph, WeightedGraph
 from core.graph.primitives.edge_kind import EdgeKind
 from core.graph.primitives.vertex import Vertex
+from core.graph.primitives.vertex_list import VertexList, vs
 
 
 @pytest.fixture
@@ -948,3 +949,89 @@ class TestGraphFactoryIO:
         g = Graph.from_adjacency_matrix(m, ["a", "b", "c"])
         assert isinstance(g, WeightedGraph)
         assert g.get_edge(Vertex("a"), Vertex("b")).weight == 3
+
+
+class TestVertexList:
+    def test_vs_returns_vertex_list(self, verts):
+        a, b, c, _ = verts
+        assert isinstance(vs(a, b, c), VertexList)
+
+    def test_len(self, verts):
+        a, b, c, _ = verts
+        assert len(vs(a, b, c)) == 3
+
+    def test_iter(self, verts):
+        a, b, c, _ = verts
+        assert list(vs(a, b, c)) == [a, b, c]
+
+    def test_repr(self, verts):
+        a, b, _ , _ = verts
+        assert repr(vs(a, b)) == "vs(a, b)"
+
+    def test_vertex_sub_list_star(self, verts):
+        a, b, c, d = verts
+        g = a - [b, c, d]
+        assert isinstance(g, UnweightedGraph)
+        assert g.num_edges == 3
+        assert g.has_edge(a, b)
+        assert g.has_edge(a, c)
+        assert g.has_edge(a, d)
+
+    def test_vertex_sub_vertex_list_star(self, verts):
+        a, b, c, d = verts
+        g = a - vs(b, c, d)
+        assert isinstance(g, UnweightedGraph)
+        assert g.num_edges == 3
+        assert g.has_edge(a, b)
+        assert g.has_edge(a, c)
+        assert g.has_edge(a, d)
+
+    def test_vertex_list_sub_vertex_list_bipartite(self, verts):
+        a, b, c, d = verts
+        g = vs(a, b) - vs(c, d)
+        assert isinstance(g, UnweightedGraph)
+        assert g.num_edges == 4
+        assert g.has_edge(a, c)
+        assert g.has_edge(a, d)
+        assert g.has_edge(b, c)
+        assert g.has_edge(b, d)
+
+    def test_plain_list_sub_vertex_list_bipartite(self, verts):
+        a, b, c, d = verts
+        g = [a, b] - vs(c, d)
+        assert isinstance(g, UnweightedGraph)
+        assert g.num_edges == 4
+
+    def test_vertex_list_sub_single_vertex(self, verts):
+        a, b, c, _ = verts
+        g = vs(a, b) - c
+        assert g.num_edges == 2
+        assert g.has_edge(a, c)
+        assert g.has_edge(b, c)
+
+    def test_vertex_list_sub_plain_list(self, verts):
+        a, b, c, d = verts
+        g = vs(a, b) - [c, d]
+        assert g.num_edges == 4
+
+    def test_unsupported_sub_returns_not_implemented(self, verts):
+        a, *_ = verts
+        vl = vs(a)
+        assert vl.__sub__(None) is NotImplemented  # type: ignore[arg-type]
+        assert vl.__rsub__(None) is NotImplemented  # type: ignore[arg-type]
+
+    def test_iadd_star_graph(self, verts):
+        a, b, c, d = verts
+        g = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g.add_edge(a, b)
+        g += a - [c, d]
+        assert g.num_edges == 3
+        assert g.has_edge(a, b)
+        assert g.has_edge(a, c)
+        assert g.has_edge(a, d)
+
+    def test_iadd_bipartite_graph(self, verts):
+        a, b, c, d = verts
+        g = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
+        g += vs(a, b) - vs(c, d)
+        assert g.num_edges == 4
