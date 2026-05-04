@@ -1,5 +1,5 @@
 [project]
-name = "arsenal"
+name = "lemma"
 version = "0.1.0"
 description = "Python implementations of STL-style containers, classic data structures, graphs, and algorithms — built from scratch for understanding"
 readme = "README.md"
@@ -47,7 +47,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["arsenal"]
+packages = ["src/core"]
 
 # ─────────────────────────────────────────────
 # ruff: 린터 + 포매터
@@ -102,7 +102,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["arsenal"]
+known-first-party = ["core"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -129,7 +129,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["arsenal"]
+source = ["core"]
 branch = true
 
 [tool.coverage.report]
