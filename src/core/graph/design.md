@@ -81,6 +81,7 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 | `-g` | `g.reverse()` |
 | `g1 + g2` | `g1.union(g2)` |
 | `g1 \| g2` | `g1.disjoint_union(g2)` |
+| `g1 == g2` | `g1.is_equal(g2)` |
 
 ---
 
@@ -148,6 +149,9 @@ def dfs_walk(...) -> Walk: ...          # 일반 traversal 기록
 | `from_dot` / `to_dot` | DOT 언어 직렬화·역직렬화 |
 | `from_json` / `to_json` | JSON 직렬화·역직렬화 |
 | `from_adjacency_matrix` / `to_adjacency_matrix` | 인접 행렬 직렬화·역직렬화 |
+| `g1 == g2` | 같은 타입·방향성·정점·간선(가중치/용량 포함) 비교 |
+| `g1.is_subgraph_of(g2)` | `self`의 모든 정점·간선이 `g2`에 포함되는지 |
+| `g1.is_isomorphic_to(g2)` | 정점 일대일 대응 + 간선·가중치 보존 (backtracking) |
 | `delete_vertex(v)` | 정점과 인접 간선 제거. 없으면 `KeyError` |
 | `delete_edge(u, v)` | 간선 제거. 없으면 `KeyError` |
 | `reverse()` | 모든 간선 방향 반전한 새 그래프. `DIRECTED` 전용 |

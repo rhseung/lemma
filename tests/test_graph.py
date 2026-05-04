@@ -1035,3 +1035,199 @@ class TestVertexList:
         g = UnweightedGraph(kind=EdgeKind.UNDIRECTED)
         g += vs(a, b) - vs(c, d)
         assert g.num_edges == 4
+
+
+class TestGraphEquality:
+    def test_eq_self(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        assert g == g
+
+    def test_eq_independent_construction(self, verts):
+        a, b, c, _ = verts
+        g1 = UnweightedGraph(a - b - c)
+        g2 = UnweightedGraph(c - b - a)
+        assert g1 == g2
+
+    def test_eq_differs_on_edge_count(self, verts):
+        a, b, c, _ = verts
+        g1 = UnweightedGraph(a - b - c)
+        g2 = UnweightedGraph()
+        g2.add_edge(a, b)
+        assert g1 != g2
+
+    def test_eq_differs_on_kind(self, verts):
+        a, b, c, _ = verts
+        g_undir = UnweightedGraph(a - b - c)
+        g_dir = UnweightedGraph(a >> b >> c)
+        assert g_undir != g_dir
+
+    def test_eq_cross_type(self, verts):
+        a, b, _, _ = verts
+        gw = WeightedGraph()
+        gw.add_edge(a, b, 1)
+        gu = UnweightedGraph()
+        gu.add_edge(a, b)
+        assert gw != gu
+
+    def test_eq_weighted_differs_on_weight(self, verts):
+        a, b, _, _ = verts
+        g1 = WeightedGraph()
+        g1.add_edge(a, b, 3)
+        g2 = WeightedGraph()
+        g2.add_edge(a, b, 5)
+        assert g1 != g2
+
+    def test_eq_weighted_same_weight(self, verts):
+        a, b, _, _ = verts
+        g1 = WeightedGraph()
+        g1.add_edge(a, b, 3)
+        g2 = WeightedGraph()
+        g2.add_edge(a, b, 3)
+        assert g1 == g2
+
+    def test_eq_flow_differs_on_capacity(self, verts):
+        a, b, c, _ = verts
+        g1 = FlowGraph(a >> 10 >> b >> 5 >> c)
+        g2 = FlowGraph(a >> 10 >> b >> 7 >> c)
+        assert g1 != g2
+
+    def test_eq_with_non_graph(self, verts):
+        a, b, _, _ = verts
+        g = UnweightedGraph()
+        g.add_edge(a, b)
+        assert g != "not a graph"
+        assert g != 42
+
+    def test_unhashable(self, verts):
+        a, b, _, _ = verts
+        g = UnweightedGraph()
+        g.add_edge(a, b)
+        with pytest.raises(TypeError):
+            hash(g)
+
+
+class TestSubgraph:
+    def test_subgraph_reflexive(self, verts):
+        a, b, c, _ = verts
+        g = UnweightedGraph(a - b - c)
+        assert g.is_subgraph_of(g)
+
+    def test_subgraph_proper(self, verts):
+        a, b, c, _ = verts
+        small = UnweightedGraph()
+        small.add_edge(a, b)
+        big = UnweightedGraph(a - b - c)
+        assert small.is_subgraph_of(big)
+        assert not big.is_subgraph_of(small)
+
+    def test_subgraph_missing_vertex(self, verts):
+        a, b, c, d = verts
+        g1 = UnweightedGraph()
+        g1.add_edge(a, d)
+        g2 = UnweightedGraph(a - b - c)
+        assert not g1.is_subgraph_of(g2)
+
+    def test_subgraph_kind_mismatch(self, verts):
+        a, b, _, _ = verts
+        g_undir = UnweightedGraph()
+        g_undir.add_edge(a, b)
+        g_dir = UnweightedGraph(kind=EdgeKind.DIRECTED)
+        g_dir.add_edge(a, b)
+        assert not g_undir.is_subgraph_of(g_dir)
+
+    def test_subgraph_weighted_must_match_weight(self, verts):
+        a, b, _, _ = verts
+        g1 = WeightedGraph()
+        g1.add_edge(a, b, 3)
+        g2 = WeightedGraph()
+        g2.add_edge(a, b, 5)
+        assert not g1.is_subgraph_of(g2)
+
+    def test_subgraph_cross_type(self, verts):
+        a, b, _, _ = verts
+        gw = WeightedGraph()
+        gw.add_edge(a, b, 1)
+        gu = UnweightedGraph()
+        gu.add_edge(a, b)
+        assert not gw.is_subgraph_of(gu)
+
+
+class TestIsomorphism:
+    def test_iso_path_relabeled(self, verts):
+        a, b, c, _ = verts
+        x, y, z = Vertex("x"), Vertex("y"), Vertex("z")
+        p1 = UnweightedGraph(a - b - c)
+        p2 = UnweightedGraph(x - y - z)
+        assert p1.is_isomorphic_to(p2)
+
+    def test_iso_triangle(self, verts):
+        a, b, c, _ = verts
+        x, y, z = Vertex("x"), Vertex("y"), Vertex("z")
+        t1 = UnweightedGraph(a - b - c - a)
+        t2 = UnweightedGraph(x - y - z - x)
+        assert t1.is_isomorphic_to(t2)
+
+    def test_iso_triangle_vs_star_not_isomorphic(self, verts):
+        a, b, c, d = verts
+        triangle = UnweightedGraph(a - b - c - a)
+        star = UnweightedGraph()
+        star.add_edge(a, b)
+        star.add_edge(a, c)
+        star.add_edge(a, d)
+        assert not triangle.is_isomorphic_to(star)
+
+    def test_iso_directed_paths(self, verts):
+        a, b, c, _ = verts
+        x, y, z = Vertex("x"), Vertex("y"), Vertex("z")
+        g1 = UnweightedGraph(a >> b >> c)
+        g2 = UnweightedGraph(x >> y >> z)
+        assert g1.is_isomorphic_to(g2)
+
+    def test_iso_weighted_preserves_weight(self, verts):
+        a, b, c, _ = verts
+        x, y, z = Vertex("x"), Vertex("y"), Vertex("z")
+        g1 = WeightedGraph(a - 3 - b - 5 - c)
+        g2 = WeightedGraph(x - 3 - y - 5 - z)
+        assert g1.is_isomorphic_to(g2)
+
+    def test_iso_weighted_different_weights(self, verts):
+        a, b, c, _ = verts
+        x, y, z = Vertex("x"), Vertex("y"), Vertex("z")
+        g1 = WeightedGraph(a - 3 - b - 5 - c)
+        g2 = WeightedGraph(x - 7 - y - 5 - z)
+        assert not g1.is_isomorphic_to(g2)
+
+    def test_iso_flow_capacity(self, verts):
+        a, b, c, _ = verts
+        x, y, z = Vertex("x"), Vertex("y"), Vertex("z")
+        f1 = FlowGraph(a >> 10 >> b >> 5 >> c)
+        f2 = FlowGraph(x >> 10 >> y >> 5 >> z)
+        assert f1.is_isomorphic_to(f2)
+
+    def test_iso_flow_differs_on_capacity(self, verts):
+        a, b, c, _ = verts
+        x, y, z = Vertex("x"), Vertex("y"), Vertex("z")
+        f1 = FlowGraph(a >> 10 >> b >> 5 >> c)
+        f2 = FlowGraph(x >> 10 >> y >> 7 >> z)
+        assert not f1.is_isomorphic_to(f2)
+
+    def test_iso_kind_mismatch(self, verts):
+        a, b, c, _ = verts
+        g_undir = UnweightedGraph(a - b - c)
+        g_dir = UnweightedGraph(a >> b >> c)
+        assert not g_undir.is_isomorphic_to(g_dir)
+
+    def test_iso_size_mismatch(self, verts):
+        a, b, c, d = verts
+        g1 = UnweightedGraph(a - b - c)
+        g2 = UnweightedGraph(a - b - c - d)
+        assert not g1.is_isomorphic_to(g2)
+
+    def test_iso_cross_type(self, verts):
+        a, b, _, _ = verts
+        gw = WeightedGraph()
+        gw.add_edge(a, b, 1)
+        gu = UnweightedGraph()
+        gu.add_edge(a, b)
+        assert not gw.is_isomorphic_to(gu)

@@ -260,6 +260,143 @@ class _AbstractGraph[E: HasEndpoints](ABC):
             raise ValueError(f"disjoint_union: 레이블 충돌 {conflict}")
         return self.union(other)
 
+    def is_equal(self, other: _AbstractGraph) -> bool:
+        """``self`` 와 ``other`` 가 같은 타입·방향성·정점·간선(가중치/용량 포함)이면 ``True``.
+
+        ``g1 == g2`` 와 동일.
+        """
+        if type(self) is not type(other):
+            return False
+        if self.kind != other.kind:
+            return False
+        if self.num_vertices != other.num_vertices or self.num_edges != other.num_edges:
+            return False
+        if set(self.vertices()) != set(other.vertices()):
+            return False
+        for v in self.vertices():
+            for e in self.out_edges(v):
+                if not other.has_edge(e.src, e.dst):
+                    return False
+                if e != other.get_edge(e.src, e.dst):
+                    return False
+        return True
+
+    def __eq__(self, other: object) -> bool:
+        """``g1 == g2`` — :meth:`is_equal` 위임."""
+        if not isinstance(other, _AbstractGraph):
+            return NotImplemented
+        return self.is_equal(other)
+
+    __hash__ = None  # type: ignore[assignment]  # 가변 객체이므로 해시 비활성화
+
+    def is_subgraph_of(self, other: _AbstractGraph) -> bool:
+        """``self`` 의 모든 정점·간선이 ``other`` 에 포함되면 ``True``.
+
+        간선의 가중치/용량과 ``kind`` 까지 일치해야 한다. 타입이 다르면 ``False``.
+        """
+        if type(self) is not type(other):
+            return False
+        if self.kind != other.kind:
+            return False
+        if not all(other.has_vertex(v) for v in self.vertices()):
+            return False
+        for v in self.vertices():
+            for e in self.out_edges(v):
+                if not other.has_edge(e.src, e.dst):
+                    return False
+                if e != other.get_edge(e.src, e.dst):
+                    return False
+        return True
+
+    def is_isomorphic_to(self, other: _AbstractGraph) -> bool:
+        """두 그래프가 동형(isomorphic)인지 확인한다.
+
+        1-Weisfeiler-Lehman 색 정제로 비동형을 다항 시간에 걸러내고, 같은 WL
+        색깔에 속하는 정점끼리만 매핑을 시도하는 backtracking으로 확정한다.
+        가중치/용량은 WL 시그니처에 포함되어 동형 판정에 반영된다.
+
+        타입이 다르거나 ``kind`` 가 다르면 ``False``. WL이 통과하더라도 정규
+        그래프 등에서는 backtracking이 분기를 많이 시도할 수 있다.
+
+        시간 복잡도:
+            - 1-WL 필터: ``O(V · (V + E log V))`` — 최대 ``V`` 회 반복, 각 반복에서
+              모든 정점의 이웃 멀티셋을 정렬한다. 비동형의 대부분은 여기서 거부된다.
+            - 백트래킹 (worst case): ``O(∏ |C_i|! · E)`` — ``C_i`` 는 ``i`` 번째 WL
+              색 그룹의 크기. 모든 정점이 같은 색이면 ``O(V! · E)`` 까지 늘어난다
+              (정규 그래프, CFI 등 1-WL이 구분 못 하는 경우).
+            - 실용적: 차수 분포가 다양한 그래프에서는 WL이 거의 모든 정점을 유일한
+              색으로 분리해 백트래킹이 ``O(V + E)`` 수준에서 끝난다.
+        """
+        from core.graph.primitives.edge import WeightedEdge
+        from core.graph.primitives.flow_edge import FlowEdge
+
+        if type(self) is not type(other):
+            return False
+        if self.kind != other.kind:
+            return False
+        if self.num_vertices != other.num_vertices or self.num_edges != other.num_edges:
+            return False
+
+        def attrs_match(e1: object, e2: object) -> bool:
+            if isinstance(e1, WeightedEdge) and isinstance(e2, WeightedEdge):
+                return e1.weight == e2.weight
+            if isinstance(e1, FlowEdge) and isinstance(e2, FlowEdge):
+                return e1.capacity == e2.capacity and e1.flow == e2.flow
+            return True
+
+        refined = _wl_refine_pair(self, other)
+        if refined is None:
+            return False
+        self_color, other_color = refined
+
+        # 정점을 WL 색깔별로 묶음 — 백트래킹은 같은 색끼리만 시도
+        other_by_color: dict[int, list[Vertex]] = {}
+        for v, c in other_color.items():
+            other_by_color.setdefault(c, []).append(v)
+
+        # 색깔 그룹이 작은 정점부터 매핑 — 분기 폭을 일찍 좁힘
+        order = sorted(self.vertices(), key=lambda v: len(other_by_color[self_color[v]]))
+        mapping: dict[Vertex, Vertex] = {}
+        used: set[Vertex] = set()
+
+        def backtrack(i: int) -> bool:
+            if i == len(order):
+                return True
+            u = order[i]
+            for w in other_by_color[self_color[u]]:
+                if w in used:
+                    continue
+                ok = True
+                for e in self.out_edges(u):
+                    if e.dst in mapping:
+                        mapped = mapping[e.dst]
+                        if not other.has_edge(w, mapped) or not attrs_match(
+                            e, other.get_edge(w, mapped)
+                        ):
+                            ok = False
+                            break
+                if ok and self.kind == EdgeKind.DIRECTED:
+                    for e in self.in_edges(u):
+                        if e.src in mapping:
+                            mapped = mapping[e.src]
+                            if not other.has_edge(mapped, w) or not attrs_match(
+                                e, other.get_edge(mapped, w)
+                            ):
+                                ok = False
+                                break
+                if not ok:
+                    continue
+                mapping[u] = w
+                used.add(w)
+                if backtrack(i + 1):
+                    return True
+                del mapping[u]
+                used.remove(w)
+            return False
+
+        return backtrack(0)
+
+
     def __neg__(self) -> Self:
         """``-g`` — :meth:`reverse` 위임."""
         return self.reverse()
@@ -316,3 +453,78 @@ class _AbstractGraph[E: HasEndpoints](ABC):
     def __iter__(self) -> Iterator[Vertex]:
         """``for v in graph`` 로 모든 정점을 순회한다."""
         return iter(self.vertices())
+
+
+def _wl_refine_pair(
+    g1: _AbstractGraph,
+    g2: _AbstractGraph,
+) -> tuple[dict[Vertex, int], dict[Vertex, int]] | None:
+    """두 그래프를 동시에 1-Weisfeiler-Lehman 정제.
+
+    "색깔"이란?
+        WL 알고리즘의 관용 표현으로, 정점에 붙이는 정수 레이블이다. 같은 색깔의
+        두 정점은 "지금까지의 정제 단계에서 구조적으로 구별 불가능"하다는 의미다
+        (그래프 이론의 graph coloring과 통하는 동치류 개념). 본 구현에서는 정수
+        ID로 표현되며, ``sig_to_id`` 가 시그니처를 색깔 ID로 정규화한다.
+
+    알고리즘:
+        1. 초기 색깔 = 정점의 차수 (유향이면 ``(in_deg, out_deg)``).
+        2. 각 라운드:  새 색깔(v) = (이전 색깔(v), 정렬된 {(이웃 색깔, 간선 속성)}).
+           이웃의 색 분포가 다르면 두 정점도 다른 색으로 갈라진다.
+        3. 분할이 더 이상 정제되지 않을 때까지 반복 — 정점 수만큼 반복하면 안정화.
+
+    구현 메모:
+        - 두 그래프가 ``sig_to_id`` 를 공유해 색깔 ID가 그래프 간에 비교 가능하다.
+        - 매 라운드마다 히스토그램이 갈라지면 즉시 ``None`` 을 반환해 비동형 판정.
+        - 가중치/용량은 이웃 멀티셋의 ``edge_attr`` 로 반영된다.
+
+    Returns:
+        안정화된 ``(color1, color2)`` 또는 색깔 히스토그램이 다르면 ``None``.
+    """
+    from core.graph.primitives.edge import WeightedEdge
+    from core.graph.primitives.flow_edge import FlowEdge
+
+    def edge_attr(e: object) -> object:
+        if isinstance(e, WeightedEdge):
+            return ("w", e.weight)
+        if isinstance(e, FlowEdge):
+            return ("c", e.capacity, e.flow)
+        return None
+
+    def init_sig(g: _AbstractGraph, v: Vertex) -> object:
+        if g.kind == EdgeKind.DIRECTED:
+            return (g.in_degree(v), g.out_degree(v))
+        return g.degree(v)
+
+    def refine_sig(g: _AbstractGraph, v: Vertex, color: dict[Vertex, int]) -> object:
+        if g.kind == EdgeKind.DIRECTED:
+            out_ms = tuple(sorted((color[e.dst], edge_attr(e)) for e in g.out_edges(v)))
+            in_ms = tuple(sorted((color[e.src], edge_attr(e)) for e in g.in_edges(v)))
+            return (color[v], out_ms, in_ms)
+        ms = tuple(sorted((color[e.dst], edge_attr(e)) for e in g.out_edges(v)))
+        return (color[v], ms)
+
+    sig_to_id: dict[object, int] = {}
+
+    def canon(sig: object) -> int:
+        if sig not in sig_to_id:
+            sig_to_id[sig] = len(sig_to_id)
+        return sig_to_id[sig]
+
+    color1: dict[Vertex, int] = {v: canon(init_sig(g1, v)) for v in g1.vertices()}
+    color2: dict[Vertex, int] = {v: canon(init_sig(g2, v)) for v in g2.vertices()}
+    if sorted(color1.values()) != sorted(color2.values()):
+        return None
+
+    # 1-WL은 정점 수만큼 반복하면 안정화된다
+    for _ in range(g1.num_vertices):
+        sig_to_id.clear()
+        new1 = {v: canon(refine_sig(g1, v, color1)) for v in g1.vertices()}
+        new2 = {v: canon(refine_sig(g2, v, color2)) for v in g2.vertices()}
+        if sorted(new1.values()) != sorted(new2.values()):
+            return None
+        # 분할이 더 이상 정제되지 않으면 안정화 — 색깔 수가 그대로면 종료
+        if len(set(new1.values())) == len(set(color1.values())):
+            return new1, new2
+        color1, color2 = new1, new2
+    return color1, color2
