@@ -212,6 +212,7 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
         import graphviz
 
         from core.graph.graph.abstract import (
+            _draw_ghost_edges,
             _edge_highlight_attrs,
             _node_highlight_attrs,
             _normalize_highlight,
@@ -224,11 +225,14 @@ class FlowGraph[W: Weight](_AbstractGraph[FlowEdge[W]]):
         dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
             dot.node(v.label, **_node_highlight_attrs(v, groups))
+        base_edges: set[tuple[str, str]] = set()
         for edges in self._adj.values():
             for e in edges:
                 if e.forward:
+                    base_edges.add((e.src.label, e.dst.label))
                     attrs = _edge_highlight_attrs(e.src.label, e.dst.label, False, groups)
                     dot.edge(e.src.label, e.dst.label, label=f"{e.flow}/{e.capacity}", **attrs)
+        _draw_ghost_edges(dot, base_edges, groups, False)
         return _patch_jupyter_transparent(dot)
 
     @classmethod

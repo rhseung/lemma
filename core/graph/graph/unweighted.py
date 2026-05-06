@@ -214,6 +214,7 @@ class UnweightedGraph(_AbstractGraph[Edge]):
         import graphviz
 
         from core.graph.graph.abstract import (
+            _draw_ghost_edges,
             _edge_highlight_attrs,
             _node_highlight_attrs,
             _normalize_highlight,
@@ -227,6 +228,7 @@ class UnweightedGraph(_AbstractGraph[Edge]):
         dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
             dot.node(v.label, **_node_highlight_attrs(v, groups))
+        base_edges: set[tuple[str, str]] = set()
         seen: set[frozenset] = set()
         for label, nbrs in self._adj.items():
             for nlabel in nbrs:
@@ -235,9 +237,11 @@ class UnweightedGraph(_AbstractGraph[Edge]):
                     if key in seen:
                         continue
                     seen.add(key)
+                base_edges.add((label, nlabel))
                 attrs = {"dir": "both"} if self.kind == EdgeKind.BIDIRECTED else {}
                 attrs.update(_edge_highlight_attrs(label, nlabel, undirected, groups))
                 dot.edge(label, nlabel, **attrs)
+        _draw_ghost_edges(dot, base_edges, groups, undirected)
         return _patch_jupyter_transparent(dot)
 
     @classmethod

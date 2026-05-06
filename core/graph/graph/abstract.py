@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Literal, Self, overload
@@ -531,32 +532,127 @@ def _normalize_highlight(highlight: object) -> list[_HighlightGroup]:
     ]
 
 
+_SVG_NODE_RE = re.compile(r'<g id="node\d+" class="node">.*?</g>', re.DOTALL)
+_SVG_ELLIPSE_RE = re.compile(r"<ellipse[^/]*/>")
+_SVG_STROKE_RE = re.compile(r'stroke="([^"]+)"')
+_SVG_RX_RE = re.compile(r'rx="([0-9.]+)"')
+
+
+def _distribute_node_border_colors(svg: str) -> str:
+    """graphviz 가 ``color`` list 를 SVG ``stroke`` 에 그대로 출력하는 버그를 보정.
+
+    ``peripheries=N`` 으로 N개 ellipse 를 그려도 모든 ellipse 의 ``stroke`` 에
+    ``"c1:c2:..."`` literal 이 들어가 단색으로만 렌더된다. 이 함수는 각 노드의
+    ellipse 들을 안쪽부터 정렬해 색을 하나씩 재할당한다 — 가장 안쪽(innermost)
+    ellipse 가 첫 색이고, 나머지가 바깥으로 layer 처럼 쌓인다.
+    """
+    def fix_node(m: re.Match[str]) -> str:
+        node = m.group(0)
+        ellipses = list(_SVG_ELLIPSE_RE.finditer(node))
+        if len(ellipses) < 2:
+            return node
+        first_stroke = _SVG_STROKE_RE.search(ellipses[0].group(0))
+        if first_stroke is None or ":" not in first_stroke.group(1):
+            return node
+        colors = first_stroke.group(1).split(":")
+
+        def rx(e: re.Match[str]) -> float:
+            r = _SVG_RX_RE.search(e.group(0))
+            return float(r.group(1)) if r else 0.0
+
+        for ell, color in zip(sorted(ellipses, key=rx), colors):
+            new_ell = _SVG_STROKE_RE.sub(f'stroke="{color}"', ell.group(0), count=1)
+            node = node.replace(ell.group(0), new_ell, 1)
+        return node
+
+    return _SVG_NODE_RE.sub(fix_node, svg)
+
+
 def _patch_jupyter_transparent(dot: Any) -> Any:
     """Jupyter 인라인 렌더링에서 다크 테마 배경이 보이지 않도록 SVG에
-    ``style="background:transparent;"`` 를 주입한다.
+    ``style="background:transparent;"`` 를 주입하고, multi-color 노드 border 를
+    동심 ellipse 별 색으로 분배한다.
 
     graphviz ``Source`` / ``Graph`` / ``Digraph`` 의 ``_repr_image_svg_xml`` 을
     감싸는 형태라 ``dot.source`` 등 다른 API는 그대로다.
     """
     orig = dot._repr_image_svg_xml
-    dot._repr_image_svg_xml = lambda: orig().replace(
-        "<svg ", '<svg style="background:transparent;" ', 1
-    )
+
+    def patched() -> str:
+        svg = _distribute_node_border_colors(orig())
+        return svg.replace("<svg ", '<svg style="background:transparent;" ', 1)
+
+    dot._repr_image_svg_xml = patched
     return dot
 
 
 def _node_highlight_attrs(v: Vertex, groups: list[_HighlightGroup]) -> dict[str, str]:
-    """정점에 적용할 graphviz 속성. 해당 그룹이 없으면 빈 dict."""
+    """정점에 적용할 graphviz 속성. 해당 그룹이 없으면 빈 dict.
+
+    여러 그룹에 동시 속하면 ``color`` 에 ``:`` 로 색을 나열하고 ``peripheries`` 를
+    색 개수와 맞춘다. graphviz 자체는 SVG 단계에서 색을 제대로 분배하지 못하지만
+    ``_distribute_node_border_colors`` 가 후처리로 동심 border 별 색을 부여한다
+    (가장 안쪽이 첫 색).
+    """
+    matching = [g.color for g in groups if v in g.vertices]
+    if not matching:
+        return {}
+    attrs = {"color": ":".join(matching), "penwidth": "2"}
+    if len(matching) > 1:
+        attrs["peripheries"] = str(len(matching))
+    return attrs
+
+
+def _draw_ghost_edges(
+    dot: Any,
+    base_edges: set[tuple[str, str]],
+    groups: list[_HighlightGroup],
+    undirected: bool,
+) -> None:
+    """그래프에 없는 highlight 간선을 점선(``dashed``)으로 추가 그린다.
+
+    ``constraint=false`` 로 설정해 layout 에 영향 주지 않게 한다 — 즉, ghost
+    edge 가 실제 edge 처럼 노드 위치를 끌어당기지 않는다.
+    무방향 그래프에서는 ``(src, dst)`` 와 ``(dst, src)`` 를 같은 ghost 로 본다.
+
+    예시 사용처: BFS 의 level chain (같은 level 정점들이 그래프엔 연결 없지만
+    개념상 한 그룹이라 가상 점선으로 묶어 보여주고 싶을 때).
+    """
+    candidate: set[tuple[str, str]] = set()
     for g in groups:
-        if v in g.vertices:
-            return {"color": g.color, "penwidth": "2"}
-    return {}
+        for src, dst in g.edges:
+            if (src, dst) in base_edges:
+                continue
+            if undirected and (dst, src) in base_edges:
+                continue
+            candidate.add((src, dst))
+
+    if undirected:
+        seen: set[frozenset[str]] = set()
+        deduped: set[tuple[str, str]] = set()
+        for src, dst in candidate:
+            key = frozenset([src, dst])
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.add((src, dst))
+        candidate = deduped
+
+    for src, dst in candidate:
+        attrs = _edge_highlight_attrs(src, dst, undirected, groups)
+        if not attrs:
+            continue
+        attrs["style"] = "dashed"
+        attrs["constraint"] = "false"
+        dot.edge(src, dst, **attrs)
 
 
 def _edge_highlight_attrs(
     src_label: str, dst_label: str, undirected: bool, groups: list[_HighlightGroup]
 ) -> dict[str, str]:
     """간선에 적용할 graphviz 속성. 해당 그룹이 없으면 빈 dict.
+
+    여러 그룹에 동시 속하면 ``color="c1:c2:..."`` 로 평행선이 그려진다.
 
     무방향(또는 양방향) 그래프 edge 위에 highlight 가 올라갈 때, **highlight 객체의
     ``kind``** 가 화살표 표시를 결정한다 (그래프의 kind를 override):
@@ -567,25 +663,35 @@ def _edge_highlight_attrs(
     - highlight ``UNDIRECTED``: ``dir`` 속성 없음 (색만)
 
     DIRECTED 그래프(graphviz Digraph)는 기본적으로 화살표가 그려지므로 ``dir`` 을
-    추가하지 않는다.
+    추가하지 않는다. 여러 그룹이 매칭되면 ``dir`` 은 첫 매칭의 것을 사용한다.
     """
+    colors: list[str] = []
+    first_dir: str | None = None
     for g in groups:
+        d: str | None = None
         if (src_label, dst_label) in g.edges:
-            attrs = {"color": g.color, "penwidth": "2"}
             if undirected:
                 if g.kind == EdgeKind.DIRECTED:
-                    attrs["dir"] = "forward"
+                    d = "forward"
                 elif g.kind == EdgeKind.BIDIRECTED:
-                    attrs["dir"] = "both"
-            return attrs
-        if undirected and (dst_label, src_label) in g.edges:
-            attrs = {"color": g.color, "penwidth": "2"}
+                    d = "both"
+        elif undirected and (dst_label, src_label) in g.edges:
             if g.kind == EdgeKind.DIRECTED:
-                attrs["dir"] = "back"
+                d = "back"
             elif g.kind == EdgeKind.BIDIRECTED:
-                attrs["dir"] = "both"
-            return attrs
-    return {}
+                d = "both"
+        else:
+            continue
+        colors.append(g.color)
+        if first_dir is None and d is not None:
+            first_dir = d
+
+    if not colors:
+        return {}
+    attrs = {"color": ":".join(colors), "penwidth": "2"}
+    if first_dir:
+        attrs["dir"] = first_dir
+    return attrs
 
 
 def _wl_refine_pair(

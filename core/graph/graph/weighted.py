@@ -207,6 +207,7 @@ class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
         import graphviz
 
         from core.graph.graph.abstract import (
+            _draw_ghost_edges,
             _edge_highlight_attrs,
             _node_highlight_attrs,
             _normalize_highlight,
@@ -220,6 +221,7 @@ class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
         dot.attr(bgcolor="transparent")
         for v in self._vertices.values():
             dot.node(v.label, **_node_highlight_attrs(v, groups))
+        base_edges: set[tuple[str, str]] = set()
         seen: set[frozenset] = set()
         for label, edges in self._adj.items():
             for e in edges:
@@ -228,9 +230,11 @@ class WeightedGraph[W: Weight](_AbstractGraph[WeightedEdge[W]]):
                     if key in seen:
                         continue
                     seen.add(key)
+                base_edges.add((label, e.dst.label))
                 attrs = {"dir": "both"} if self.kind == EdgeKind.BIDIRECTED else {}
                 attrs.update(_edge_highlight_attrs(label, e.dst.label, undirected, groups))
                 dot.edge(label, e.dst.label, label=str(e.weight), **attrs)
+        _draw_ghost_edges(dot, base_edges, groups, undirected)
         return _patch_jupyter_transparent(dot)
 
     @classmethod
