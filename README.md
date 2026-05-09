@@ -4,6 +4,54 @@
 
 lemma는 자료구조와 알고리즘을 밑바닥부터 직접 구현하는 개인 학습 프로젝트입니다. C++ STL에 대응하는 컨테이너들을 Python으로 짜고, 그 위에 그래프·문자열·기하·정수론 등의 알고리즘을 쌓아 올립니다. `collections.deque`, `heapq`, `networkx` 같은 표준 라이브러리는 쓰지 않습니다. 목표는 이 구조들이 _왜_ 이렇게 생겼는지 이해하는 것입니다.
 
+## 구현 우선순위 (AI2000 수업 기준)
+
+AI2000 자료구조 및 알고리즘 강의(Prof. Mansu Kim) 커리큘럼에 맞춰 구현 순서를 정한다.
+수업 전체 범위를 먼저, 그 외 심화 내용을 이후에 구현한다.
+
+### 🔴 Priority 1 — 수업 전체 범위
+
+강의·과제·Reading 자료를 포함한 수업 범위 전체다.
+
+| 주차 | 구현 대상 | 파일 경로 | 상태 |
+|------|-----------|-----------|------|
+| W2 | **Dynamic Array** — append, insert, remove, resize | `core/containers/dynamic_array.py` | 🔲 |
+| W3 | **Stack** — push, pop, peek (배열 기반) | `core/containers/stack.py` | 🔲 |
+| W3 | **Queue** — enqueue, dequeue, peek (배열/연결 리스트 기반) | `core/containers/queue.py` | 🔲 |
+| W3 | **Deque** — push/pop front & back | `core/containers/deque.py` | 🔲 |
+| W4 | **Singly Linked List** — insert, delete, search, traversal | `core/containers/linked_list.py` | 🔲 |
+| W4 | **Doubly Linked List** — 양방향 insert/delete/traversal | `core/containers/linked_list.py` | 🔲 |
+| W4 | **Circular Doubly Linked List** | `core/containers/linked_list.py` | 🔲 |
+| W6 | **Hash Table** — chaining + open addressing (probing), insert/delete/search | `core/containers/hash_map.py` | 🔲 |
+| W7 | **Binary Search Tree (BST)** — insert, delete, search, min/max | `core/trees/bst.py` | 🔲 |
+| W7 | **BST Traversal (반복 버전)** — 재귀 버전과 비교 | `core/trees/bst.py` | 🔲 |
+| W7 | **Min-Heap** — insert (sift-up), extract-min (sift-down), heapify | `core/heaps/binary_heap.py` | 🔲 |
+| W7 | **Priority Queue (Heap 기반)** | `core/heaps/binary_heap.py` | 🔲 |
+| W9 | **Selection Sort** | `algorithms/sorting/sorts.py` | 🔲 |
+| W9 | **Insertion Sort** | `algorithms/sorting/sorts.py` | 🔲 |
+| W9 | **Bubble Sort** | `algorithms/sorting/sorts.py` | 🔲 |
+| W9 | **Quick Sort** | `algorithms/sorting/sorts.py` | 🔲 |
+| W9 | **Merge Sort** | `algorithms/sorting/sorts.py` | 🔲 |
+| W9 | **Binary Search** | `algorithms/sorting/binary_search.py` | 🔲 |
+| W10 | **Graph** — adjacency list/matrix, add/remove vertex & edge | `core/graph/` | ✅ |
+| W10 | **DFS** — 재귀 / 스택 기반 | `algorithms/graph/dfs.py` | ✅ |
+| W10 | **BFS** — 큐 기반 | `algorithms/graph/bfs.py` | ✅ |
+
+### 🟢 Priority 2 — lemma 자체 목표 (방학/여유 시간)
+
+수업 범위 밖의 심화 구현. 경쟁 프로그래밍 및 CS 이론 학습 목적이다.
+
+- **균형 트리**: RB 트리, AVL 트리, 트립, 스플레이 트리, 스킵 리스트
+- **고급 힙**: 페어링 힙, 좌편향 힙, 피보나치 힙
+- **기타 자료구조**: Union-Find, Fenwick 트리, 세그먼트 트리, 트라이
+- **그래프 알고리즘**: Dijkstra, Bellman-Ford, Floyd-Warshall, Kruskal, Prim, SCC, 최대 유량
+- **문자열**: KMP, Z-알고리즘, Aho-Corasick, 접미사 배열, Manacher
+- **계산 기하**: 볼록 껍질, 최근접 점쌍, 선분 교차, CCW
+- **정수론**: 소수 체, 모듈러 산술, 빠른 거듭제곱, 확장 유클리드
+- **동적 계획법**: LIS, 배낭, 편집 거리, CHT, 분할 정복 DP, 비트마스크 DP
+- **선형대수**: 행렬 거듭제곱, 가우스 소거
+- **조합론**: 이항 계수, 순열, 포함-배제 원리
+
 ## 범위
 
 - **자료구조**
