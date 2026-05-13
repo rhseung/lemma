@@ -1,23 +1,27 @@
-from collections.abc import Callable
+"""textbook recursive DFS.
 
+``@trace`` 가 ``dfs.visits`` · ``dfs.walks`` helper 를 자동 부여한다.
+"""
+
+from collections.abc import Iterator
+
+from algorithms.graph.trace import DFSEvent, trace
 from core import UnweightedGraph, Vertex, vertices
 
 
-def dfs(
-    graph: UnweightedGraph,
-    u: Vertex,
-    visited: set[Vertex],
-    visit: Callable[[Vertex], None],
-) -> None:
-    """recursive textbook DFS — 각 정점에 처음 도달할 때 ``visit(u)`` 를 호출한다.
+@trace
+def dfs(graph: UnweightedGraph, start: Vertex) -> Iterator[DFSEvent]:
+    """recursive DFS — ``("visit", u, parent)`` 이벤트를 yield 한다."""
+    visited: set[Vertex] = set()
 
-    ``visited`` 는 호출자가 빈 set 을 만들어 넘긴다 (재귀 사이에서 공유).
-    """
-    visited.add(u)
-    visit(u)
-    for v in graph.neighbors(u):
-        if v not in visited:
-            dfs(graph, v, visited, visit)
+    def go(u: Vertex, parent: Vertex | None = None) -> Iterator[DFSEvent]:
+        visited.add(u)
+        yield "visit", u, parent
+        for v in graph.neighbors(u):
+            if v not in visited:
+                yield from go(v, u)
+
+    yield from go(start)
 
 
 if __name__ == "__main__":
@@ -26,4 +30,6 @@ if __name__ == "__main__":
     for u, v in [(a, b), (a, c), (b, d), (b, e), (c, f)]:
         g.add_edge(u, v)
 
-    dfs(g, a, set(), print)
+    for u in dfs.visits(g, a):
+        print(u)
+    print("walks:", dfs.walks(g, a))

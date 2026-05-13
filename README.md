@@ -34,8 +34,8 @@ AI2000 자료구조 및 알고리즘 강의(Prof. Mansu Kim) 커리큘럼에 맞
 | W9 | **Merge Sort** | `algorithms/sorting/sorts.py` | 🔲 |
 | W9 | **Binary Search** | `algorithms/sorting/binary_search.py` | 🔲 |
 | W10 | **Graph** — adjacency list/matrix, add/remove vertex & edge | `core/graph/` | ✅ |
-| W10 | **DFS** — 재귀 / 스택 기반 | `algorithms/graph/dfs.py` | ✅ |
-| W10 | **BFS** — 큐 기반 | `algorithms/graph/bfs.py` | ✅ |
+| W10 | **DFS** — textbook recursive, `@trace` 데코레이터로 `.visits` · `.walks` helper 자동 부여 | `algorithms/graph/dfs.py` | ✅ |
+| W10 | **BFS** — textbook iterative, `@trace` 데코레이터로 `.visits` · `.levels` helper 자동 부여 | `algorithms/graph/bfs.py` | ✅ |
 
 ### 🟢 Priority 2 — lemma 자체 목표 (방학/여유 시간)
 

@@ -10,7 +10,7 @@ from core.graph.primitives import (
     vertices,
     vs,
 )
-from core.graph.walk import Path, Trail, Walk, WeightedWalk
+from core.graph.walk import Path, Trail, Walk, WeightedPath, WeightedWalk
 
 __all__ = [
     "Edge",
@@ -27,6 +27,7 @@ __all__ = [
     "Weight",
     "WeightedEdge",
     "WeightedGraph",
+    "WeightedPath",
     "WeightedWalk",
     "vertices",
     "vs",
