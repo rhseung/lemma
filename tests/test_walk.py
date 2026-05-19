@@ -5,13 +5,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from core.graph.graph.unweighted import UnweightedGraph
-from core.graph.graph.weighted import WeightedGraph
-from core.graph.primitives.edge import Edge
-from core.graph.primitives.edge_kind import EdgeKind
-from core.graph.primitives.vertex import Vertex
-from core.graph.walk import Path as GPath
-from core.graph.walk import Trail, Walk, WeightedWalk
+from scaffold.graph.graph.unweighted import UnweightedGraph
+from scaffold.graph.graph.weighted import WeightedGraph
+from scaffold.graph.primitives.edge import Edge
+from scaffold.graph.primitives.edge_kind import EdgeKind
+from scaffold.graph.primitives.vertex import Vertex
+from scaffold.graph.walk import Path as GPath
+from scaffold.graph.walk import Trail, Walk, WeightedWalk
 
 
 @pytest.fixture

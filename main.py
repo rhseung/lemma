@@ -1,4 +1,4 @@
-import core.graph as g
+import scaffold as g
 
 if __name__ == "__main__":
     a, b, c, d, e, f, s, t = g.vertices("a", "b", "c", "d", "e", "f", "s", "t")

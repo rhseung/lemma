@@ -5,9 +5,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from core.graph.primitives.edge import Edge, _WeightedEdgeBuilder
-from core.graph.primitives.edge_kind import EdgeKind
-from core.graph.primitives.vertex import Vertex
+from scaffold.graph.primitives.edge import Edge, _WeightedEdgeBuilder
+from scaffold.graph.primitives.edge_kind import EdgeKind
+from scaffold.graph.primitives.vertex import Vertex
 
 
 @pytest.fixture

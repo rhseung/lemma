@@ -5,10 +5,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from core.graph.graph import FlowGraph, Graph, UnweightedGraph, WeightedGraph
-from core.graph.primitives.edge_kind import EdgeKind
-from core.graph.primitives.vertex import Vertex
-from core.graph.primitives.vertex_list import VertexList, vs
+from scaffold.graph.graph import FlowGraph, Graph, UnweightedGraph, WeightedGraph
+from scaffold.graph.primitives.edge_kind import EdgeKind
+from scaffold.graph.primitives.vertex import Vertex
+from scaffold.graph.primitives.vertex_list import VertexList, vs
 
 
 @pytest.fixture
@@ -347,15 +347,15 @@ class TestUnweightedGraphIO:
         g = UnweightedGraph(a - b - c)
         edges = g.to_edge_list()
         assert len(edges) == 2
-        assert ("a", "b") in edges
-        assert ("b", "c") in edges
+        assert (a, b) in edges
+        assert (b, c) in edges
 
     def test_to_edge_list_directed(self, verts):
         a, b, c, _ = verts
         g = UnweightedGraph(a >> b >> c)
         edges = g.to_edge_list()
-        assert ("a", "b") in edges
-        assert ("b", "c") in edges
+        assert (a, b) in edges
+        assert (b, c) in edges
         assert len(edges) == 2
 
     def test_to_json_from_json_roundtrip(self, verts):
@@ -442,8 +442,8 @@ class TestWeightedGraphIO:
         g = WeightedGraph(a - 3 - b - 2 - c)
         edges = g.to_edge_list()
         assert len(edges) == 2
-        assert ("a", "b", 3) in edges
-        assert ("b", "c", 2) in edges
+        assert (a, b, 3) in edges
+        assert (b, c, 2) in edges
 
     def test_to_json_from_json_roundtrip(self, verts):
         a, b, c, _ = verts
@@ -513,8 +513,8 @@ class TestFlowGraphIO:
         g = FlowGraph(a >> 10 >> b >> 5 >> c)
         edges = g.to_edge_list()
         assert len(edges) == 2
-        assert ("a", "b", 10) in edges
-        assert ("b", "c", 5) in edges
+        assert (a, b, 10) in edges
+        assert (b, c, 5) in edges
 
     def test_to_json_from_json_roundtrip(self, verts):
         a, b, c, _ = verts
@@ -1236,7 +1236,7 @@ class TestIsomorphism:
 class TestHighlight:
     def test_single_walk_highlight(self, verts):
         """UNDIRECTED walk highlight는 색만 입히고 화살표는 안 그린다."""
-        from core.graph.walk import Walk
+        from scaffold.graph.walk import Walk
 
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
@@ -1250,7 +1250,7 @@ class TestHighlight:
 
     def test_directed_walk_traversal_direction(self, verts):
         """DIRECTED walk highlight는 무방향 그래프 위에 화살표 방향을 표시한다."""
-        from core.graph.walk import Walk
+        from scaffold.graph.walk import Walk
 
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
@@ -1262,7 +1262,7 @@ class TestHighlight:
         assert 'a -- b [color=red dir=back' in src_back
 
     def test_bidirected_walk_highlight(self, verts):
-        from core.graph.walk import Walk
+        from scaffold.graph.walk import Walk
 
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
@@ -1281,7 +1281,7 @@ class TestHighlight:
         assert 'b -- c [color=red dir=forward' in src
 
     def test_directed_edge_orientation_strict(self, verts):
-        from core.graph.walk import Walk
+        from scaffold.graph.walk import Walk
 
         a, b, _, _ = verts
         g = UnweightedGraph(kind=EdgeKind.DIRECTED)
@@ -1293,7 +1293,7 @@ class TestHighlight:
         assert 'a -> b [color=red' not in src_no_match
 
     def test_multiple_highlight_color_cycle(self, verts):
-        from core.graph.walk import Walk
+        from scaffold.graph.walk import Walk
 
         a, b, c, d = verts
         g = UnweightedGraph(a - b - c - d)
@@ -1311,7 +1311,7 @@ class TestHighlight:
         assert 'b -- c [color=red' not in src
 
     def test_weighted_highlight_keeps_label(self, verts):
-        from core.graph.walk import Walk
+        from scaffold.graph.walk import Walk
 
         a, b, c, _ = verts
         gw = WeightedGraph(a - 3 - b - 5 - c)
@@ -1320,7 +1320,7 @@ class TestHighlight:
         assert 'color=red' in src
 
     def test_flow_highlight(self, verts):
-        from core.graph.walk import Walk
+        from scaffold.graph.walk import Walk
 
         a, b, c, _ = verts
         f = FlowGraph(a >> 10 >> b >> 5 >> c)
