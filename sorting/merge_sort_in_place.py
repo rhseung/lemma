@@ -13,28 +13,28 @@ def _merge_sort(A: list[int], s: int, e: int):
 def merge(A: list[int], s: int, m: int, e: int):
     L = A[s : m + 1]
     R = A[m + 1 : e + 1]
-    l, r = 0, 0
+    left, right = 0, 0
     n_L, n_R = len(L), len(R)
     i = s
 
-    while l < n_L and r < n_R:
-        if L[l] <= R[r]:
-            A[i] = L[l]
-            l += 1
+    while left < n_L and right < n_R:
+        if L[left] <= R[right]:
+            A[i] = L[left]
+            left += 1
         else:
-            A[i] = R[r]
-            r += 1
+            A[i] = R[right]
+            right += 1
         i += 1
 
-    while l < n_L:
-        A[i] = L[l]
+    while left < n_L:
+        A[i] = L[left]
         i += 1
-        l += 1
+        left += 1
 
-    while r < n_R:
-        A[i] = R[r]
+    while right < n_R:
+        A[i] = R[right]
         i += 1
-        r += 1
+        right += 1
 
 
 if __name__ == "__main__":

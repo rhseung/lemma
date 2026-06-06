@@ -3,7 +3,6 @@ from collections.abc import Callable, Iterator
 from typing import Any
 
 from scaffold import Edge, EdgeKind, UnweightedGraph, Vertex, Walk, WeightedGraph, WeightedPath
-from scaffold.graph.primitives.weight import Weight
 
 
 class _Traced[E: tuple]:

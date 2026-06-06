@@ -95,6 +95,9 @@ ignore = [
 "graph/**/*.py" = [
     "PLC0415",  # 상호 의존 클래스(Vertex↔Edge↔Walk)의 순환 import 회피용 local import
 ]
+"scaffold/graph/**/*.py" = [
+    "PLC0415",  # 상호 의존 클래스(Vertex↔Edge↔Walk)의 순환 import 회피용 local import
+]
 "benchmarks/**/*.py" = [
     "T201",     # print in benchmarks OK
 ]

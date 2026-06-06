@@ -36,8 +36,8 @@ def _parse_dot(s: str) -> tuple[EdgeKind, list[str], list[tuple[str, str, str | 
             seen.add(label)
             vertices.append(label)
 
-    for line in content.splitlines():
-        line = line.strip()
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
         em = edge_re.search(line)
         if em:
             u, v, attrs = em.group(1), em.group(2), em.group(3) or ""

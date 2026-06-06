@@ -29,10 +29,9 @@ class CircularDeque[T]:
         """앞에서 뒤 순서로 원소를 list로 반환한다. 시간복잡도는 O(n)."""
         if self.is_empty():
             return []
-        elif self._front < self._rear:
+        if self._front < self._rear:
             return cast(list[T], self._content[self._front : self._rear])
-        else:
-            return cast(list[T], self._content[self._front :] + self._content[: self._rear])
+        return cast(list[T], self._content[self._front :] + self._content[: self._rear])
 
     def __str__(self) -> str:
         """앞에서 뒤 순서로 원소를 문자열로 표현한다. 시간복잡도는 O(n)."""

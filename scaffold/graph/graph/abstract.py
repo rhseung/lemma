@@ -560,7 +560,7 @@ def _distribute_node_border_colors(svg: str) -> str:
             r = _SVG_RX_RE.search(e.group(0))
             return float(r.group(1)) if r else 0.0
 
-        for ell, color in zip(sorted(ellipses, key=rx), colors):
+        for ell, color in zip(sorted(ellipses, key=rx), colors, strict=False):
             new_ell = _SVG_STROKE_RE.sub(f'stroke="{color}"', ell.group(0), count=1)
             node = node.replace(ell.group(0), new_ell, 1)
         return node

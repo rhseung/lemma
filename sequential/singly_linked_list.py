@@ -1,24 +1,25 @@
 from __future__ import annotations
 
+
 class Node[T]:
     def __init__(self, value: T):
         self.value = value
         self.next: Node[T] | None = None
-    
+
 class SinglyLinkedList[T]:
     def __init__(self):
         self._head: Node[T] | None = None
         self._tail: Node[T] | None = None
         self._len = 0
-    
+
     def __len__(self) -> int:
         return self._len
-    
+
     def __str__(self) -> str:
         ret = []
 
         cur = self._head
-        for i in range(self._len):
+        for _ in range(self._len):
             if cur is not None:
                 ret.append(str(cur.value))
                 cur = cur.next
@@ -103,7 +104,7 @@ class SinglyLinkedList[T]:
         """
         if self._len == 0:
             raise IndexError()
-        
+
         assert self._head is not None
         r = self._head.value
 
@@ -111,10 +112,10 @@ class SinglyLinkedList[T]:
             self._head = self._tail = None
         else:
             self._head = self._head.next
-        
+
         self._len -= 1
         return r
-    
+
     def pop_back(self) -> T:
         """맨 뒤 값을 제거해서 반환한다. 시간복잡도는 O(n).
 
@@ -129,7 +130,7 @@ class SinglyLinkedList[T]:
         """
         if self._len == 0:
             raise IndexError()
-        
+
         assert self._tail is not None
         assert self._head is not None
         r = self._tail.value
@@ -141,10 +142,10 @@ class SinglyLinkedList[T]:
             while prev_tail.next != self._tail:
                 prev_tail = prev_tail.next
                 assert prev_tail is not None
-            
+
             prev_tail.next = None
             self._tail = prev_tail
-        
+
         self._len -= 1
         return r
 

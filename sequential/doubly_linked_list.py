@@ -9,10 +9,10 @@ class DoublyLinkedList[T]:
         self._head: DNode[T] | None = None
         self._tail: DNode[T] | None = None
         self._len = 0
-    
+
     def __len__(self) -> int:
         return self._len
-    
+
     def __str__(self) -> str:
         ret = []
 
@@ -47,7 +47,7 @@ class DoublyLinkedList[T]:
     def clear(self):
         self._head = self._tail = None
         self._len = 0
-    
+
     def push_front(self, value: T):
         """맨 앞에 값을 추가한다. 시간복잡도는 O(1).
 
@@ -67,9 +67,9 @@ class DoublyLinkedList[T]:
             new_node.next = self._head
             self._head.prev = new_node
             self._head = new_node
-        
+
         self._len += 1
-    
+
     def push_back(self, value: T):
         """맨 뒤에 값을 추가한다. 시간복잡도는 O(1).
 
@@ -89,9 +89,9 @@ class DoublyLinkedList[T]:
             new_node.prev = self._tail
             self._tail.next = new_node
             self._tail = new_node
-        
+
         self._len += 1
-    
+
     def pop_front(self) -> T:
         """맨 앞 값을 제거해서 반환한다. 시간복잡도는 O(1).
 
@@ -105,7 +105,7 @@ class DoublyLinkedList[T]:
         """
         if self._len == 0:
             raise IndexError()
-        
+
         assert self._head is not None
         assert self._tail is not None
         r = self._head.value
@@ -119,7 +119,7 @@ class DoublyLinkedList[T]:
 
         self._len -= 1
         return r
-    
+
     def pop_back(self) -> T:
         """맨 뒤 값을 제거해서 반환한다. 시간복잡도는 O(1).
 
@@ -134,7 +134,7 @@ class DoublyLinkedList[T]:
         """
         if self._len == 0:
             raise IndexError()
-        
+
         assert self._head is not None
         assert self._tail is not None
         r = self._tail.value

@@ -120,7 +120,11 @@ class UnweightedGraph(_AbstractGraph[Edge]):
         label = v.label
         for other_label in self._adj:
             if other_label != label:
-                self._adj[other_label] = [l for l in self._adj[other_label] if l != label]
+                self._adj[other_label] = [
+                    neighbor_label
+                    for neighbor_label in self._adj[other_label]
+                    if neighbor_label != label
+                ]
         del self._adj[label]
         del self._vertices[label]
 

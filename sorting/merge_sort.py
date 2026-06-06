@@ -9,24 +9,24 @@ def merge_sort(A: list[int]):
 
 
 def merge(L: list[int], R: list[int]):
-    l, r = 0, 0
+    left, right = 0, 0
     res = []
 
-    while l < len(L) and r < len(R):
-        if L[l] <= R[r]:
-            res.append(L[l])
-            l += 1
+    while left < len(L) and right < len(R):
+        if L[left] <= R[right]:
+            res.append(L[left])
+            left += 1
         else:
-            res.append(R[r])
-            r += 1
+            res.append(R[right])
+            right += 1
 
-    while l < len(L):
-        res.append(L[l])
-        l += 1
+    while left < len(L):
+        res.append(L[left])
+        left += 1
 
-    while r < len(R):
-        res.append(R[r])
-        r += 1
+    while right < len(R):
+        res.append(R[right])
+        right += 1
 
     return res
 

@@ -9,6 +9,7 @@ from scaffold.graph.graph import FlowGraph, Graph, UnweightedGraph, WeightedGrap
 from scaffold.graph.primitives.edge_kind import EdgeKind
 from scaffold.graph.primitives.vertex import Vertex
 from scaffold.graph.primitives.vertex_list import VertexList, vs
+from scaffold.graph.walk import Walk
 
 
 @pytest.fixture
@@ -871,7 +872,7 @@ class TestFlowGraphDSL:
         assert g.num_edges == 2
 
     def test_iadd_flow_edge(self, verts):
-        a, b, c, _ = verts
+        a, b, _c, _ = verts
         g = FlowGraph()
         g.add_edge(a, b, 10)
         fwd = g.get_edge(a, b)
@@ -1041,7 +1042,8 @@ class TestGraphEquality:
     def test_eq_self(self, verts):
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
-        assert g == g
+        same = g
+        assert g == same
 
     def test_eq_independent_construction(self, verts):
         a, b, c, _ = verts
@@ -1236,8 +1238,6 @@ class TestIsomorphism:
 class TestHighlight:
     def test_single_walk_highlight(self, verts):
         """UNDIRECTED walk highlight는 색만 입히고 화살표는 안 그린다."""
-        from scaffold.graph.walk import Walk
-
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
         src = g._to_graphviz(highlight=Walk([a - b, b - c])).source
@@ -1250,8 +1250,6 @@ class TestHighlight:
 
     def test_directed_walk_traversal_direction(self, verts):
         """DIRECTED walk highlight는 무방향 그래프 위에 화살표 방향을 표시한다."""
-        from scaffold.graph.walk import Walk
-
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
         # Walk(>>): graph edge와 같은 방향 → forward
@@ -1262,8 +1260,6 @@ class TestHighlight:
         assert 'a -- b [color=red dir=back' in src_back
 
     def test_bidirected_walk_highlight(self, verts):
-        from scaffold.graph.walk import Walk
-
         a, b, c, _ = verts
         g = UnweightedGraph(a - b - c)
         src = g._to_graphviz(highlight=Walk([a & b])).source
@@ -1281,8 +1277,6 @@ class TestHighlight:
         assert 'b -- c [color=red dir=forward' in src
 
     def test_directed_edge_orientation_strict(self, verts):
-        from scaffold.graph.walk import Walk
-
         a, b, _, _ = verts
         g = UnweightedGraph(kind=EdgeKind.DIRECTED)
         g.add_edge(a, b)
@@ -1293,8 +1287,6 @@ class TestHighlight:
         assert 'a -> b [color=red' not in src_no_match
 
     def test_multiple_highlight_color_cycle(self, verts):
-        from scaffold.graph.walk import Walk
-
         a, b, c, d = verts
         g = UnweightedGraph(a - b - c - d)
         src = g._to_graphviz(highlight=[Walk([a - b]), Walk([c - d])]).source
@@ -1311,8 +1303,6 @@ class TestHighlight:
         assert 'b -- c [color=red' not in src
 
     def test_weighted_highlight_keeps_label(self, verts):
-        from scaffold.graph.walk import Walk
-
         a, b, c, _ = verts
         gw = WeightedGraph(a - 3 - b - 5 - c)
         src = gw._to_graphviz(highlight=Walk([a - b])).source
@@ -1320,8 +1310,6 @@ class TestHighlight:
         assert 'color=red' in src
 
     def test_flow_highlight(self, verts):
-        from scaffold.graph.walk import Walk
-
         a, b, c, _ = verts
         f = FlowGraph(a >> 10 >> b >> 5 >> c)
         src = f._to_graphviz(highlight=Walk([a >> b])).source

@@ -11,19 +11,19 @@ def _quick_sort(A: list[int], s: int, e: int):
 
 def partition(A: list[int], s: int, e: int):
     pivot = A[s]
-    l, r = s + 1, e
+    left, right = s + 1, e
 
-    while l <= r:
-        while l <= r and A[l] <= pivot:
-            l += 1
-        while l <= r and pivot <= A[r]:
-            r -= 1
+    while left <= right:
+        while left <= right and A[left] <= pivot:
+            left += 1
+        while left <= right and pivot <= A[right]:
+            right -= 1
 
-        if l < r:
-            A[l], A[r] = A[r], A[l]
+        if left < right:
+            A[left], A[right] = A[right], A[left]
 
-    A[s], A[r] = A[r], A[s]
-    return r
+    A[s], A[right] = A[right], A[s]
+    return right
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
+from math import ceil, log2
 from typing import cast
-from math import log2, ceil
+
 
 class DynamicArray[T]:
     """용량이 가득 차면 내부 배열 크기를 2배로 늘리는 동적 배열."""
@@ -9,11 +10,11 @@ class DynamicArray[T]:
         self._capacity = 1 << ceil(log2(capacity))
         self._len = 0
         self._content: list[T | None] = [None] * self._capacity
-    
+
     def __len__(self) -> int:
         """저장된 원소 개수를 반환한다. 시간복잡도는 O(1)."""
         return self._len
-    
+
     def __str__(self) -> str:
         """내부 배열 전체를 문자열로 반환한다. 시간복잡도는 O(capacity)."""
         return str(self._content)
@@ -21,12 +22,12 @@ class DynamicArray[T]:
     def __repr__(self) -> str:
         """디버깅용 표현을 반환한다. 시간복잡도는 O(capacity)."""
         return f"DynamicArray(len={self._len}, capacity={self._capacity}, content={self._content})"
-    
+
     def __getitem__(self, idx: int) -> T:
         """idx 위치의 값을 반환한다. 시간복잡도는 O(1)."""
         if not(0 <= idx < self._len):
             raise IndexError(f"0 <= {idx=} < len={self._len}")
-        
+
         return cast(T, self._content[idx])
 
     def is_empty(self) -> bool:
@@ -50,7 +51,7 @@ class DynamicArray[T]:
             self._content[i] = None
 
         self._len = 0
-    
+
     def _extend(self):
         """내부 배열 크기를 2배로 늘린다. 시간복잡도는 O(n).
 
@@ -70,7 +71,7 @@ class DynamicArray[T]:
 
         for i in range(self._len):
             new_content[i] = self._content[i]
-        
+
         self._capacity = new_capacity
         self._content = new_content
 
@@ -86,14 +87,14 @@ class DynamicArray[T]:
 
         if self._len == self._capacity:
             self._extend()
-        
+
         for i in range(self._len - 1, idx - 1, -1):
             self._content[i + 1] = self._content[i]
-        
+
         self._content[idx] = value
         self._len += 1
         return True
-    
+
     def append(self, value: T) -> bool:
         """맨 뒤에 값을 추가한다. amortized 시간복잡도는 O(1).
 
@@ -107,7 +108,7 @@ class DynamicArray[T]:
         따라서 n번 append의 평균 비용, 즉 append 1번의 amortized 비용은 O(1)이다.
         """
         return self.insert(self._len, value)
-    
+
     def pop(self, idx: int) -> bool:
         """idx 위치의 값을 제거한다. 시간복잡도는 O(n).
 
@@ -116,16 +117,16 @@ class DynamicArray[T]:
         """
         if not(0 <= idx < self._len):
             return False
-        
+
         # 1/4이면 shrink도 구현해야 한다 함
-        
+
         for i in range(idx, self._len - 1):
             self._content[i] = self._content[i + 1]
-        
+
         self._content[self._len - 1] = None
         self._len -= 1
         return True
-    
+
     def remove(self, target_value: T) -> bool:
         """처음 등장하는 target_value를 제거한다. 시간복잡도는 O(n).
 
@@ -138,7 +139,7 @@ class DynamicArray[T]:
                 break
         else:
             return False
-        
+
         return self.pop(idx)
 
 

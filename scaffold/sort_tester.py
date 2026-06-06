@@ -219,7 +219,7 @@ def compare_sort(
             print(f"\nbench N={n}:")
             print("  " + "fn".ljust(name_w) + "best       avg        mem")
             data = [rng.randint(-10_000, 10_000) for _ in range(n)]
-            for name, fn in zip(names, sort_fns):
+            for name, fn in zip(names, sort_fns, strict=True):
                 times: list[float] = []
                 for _ in range(3):
                     buf = list(data)
@@ -247,8 +247,8 @@ def compare_sort(
     styles = [_classify(seen_returned[i], seen_mutated[i]) for i in range(len(sort_fns))]
     all_passed = all(not f for f in fails)
 
-    print("  style:   " + "   ".join(f"{n}={s}" for n, s in zip(names, styles)))
-    for i, (name, fn_fails) in enumerate(zip(names, fails)):
+    print("  style:   " + "   ".join(f"{n}={s}" for n, s in zip(names, styles, strict=True)))
+    for name, fn_fails in zip(names, fails, strict=True):
         passed = total - len(fn_fails)
         status = f"{passed}/{total} ✓" if not fn_fails else f"{passed}/{total} ✗ failed: {', '.join(fn_fails)}"
         print(f"  {name}: {status}")
