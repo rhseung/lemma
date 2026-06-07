@@ -143,7 +143,7 @@ class DynamicArray[T]:
         return self.pop(idx)
 
 
-if __name__ == "__main__":
+def _demo():
     arr = DynamicArray[int](2)
     print(arr)
 
@@ -163,3 +163,7 @@ if __name__ == "__main__":
 
     arr.remove(40)
     print("after remove:", arr)
+
+
+if __name__ == "__main__":
+    _demo()

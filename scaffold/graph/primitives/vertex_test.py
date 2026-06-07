@@ -1,9 +1,4 @@
-import sys
-from pathlib import Path
-
 import pytest
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from scaffold.graph.primitives.edge import Edge, _WeightedEdgeBuilder
 from scaffold.graph.primitives.edge_kind import EdgeKind

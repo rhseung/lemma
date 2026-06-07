@@ -88,7 +88,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = [
+"**/*_test.py" = [
     "PLR2004",  # magic values in tests OK
     "S101",     # assert in tests OK
 ]
@@ -117,9 +117,9 @@ docstring-code-format = true
 # pytest
 # ─────────────────────────────────────────────
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["sequential", "map", "sorting", "graph", "sets", "scaffold"]
 pythonpath = ["."]
-python_files = ["test_*.py"]
+python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [

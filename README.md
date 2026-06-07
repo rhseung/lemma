@@ -21,7 +21,6 @@ lemma/
 │   ├── graph/                  # 그래프 표현, DSL, I/O
 │   ├── trace/                  # 알고리즘 실행 추적 이벤트
 │   └── sort_tester             # 정렬 검증 및 벤치마크 보조 도구
-├── tests/                      # pytest 테스트
 └── notebooks/                  # 학습용 노트북
 ```
 
@@ -71,6 +70,20 @@ uv run pyrefly check
 ## 테스트
 
 주요 자료구조와 그래프 DSL에는 pytest 테스트가 있습니다.
+테스트는 구현과 같은 폴더에 `*_test` 형태로 둡니다.
+구현 하나를 독립적으로 실행하고 싶으면 해당 구현 폴더를 pytest 대상으로 넘깁니다.
+
+```text
+some_structure/
+├── __init__
+├── __main__
+└── some_structure_test
+```
+
+```bash
+uv run pytest some/package/some_structure
+uv run python -m some.package.some_structure
+```
 
 자료구조 테스트는 주로 다음을 확인합니다.
 

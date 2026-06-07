@@ -149,7 +149,7 @@ class HashTableChaining[K: Key, V]:
         self._buckets = new_buckets
 
 
-if __name__ == "__main__":
+def _demo():
     table = HashTableChaining[int, str](4)
 
     def show(step: str):
@@ -176,3 +176,7 @@ if __name__ == "__main__":
 
     table.delete(5)
     show("delete(5)")
+
+
+if __name__ == "__main__":
+    _demo()
