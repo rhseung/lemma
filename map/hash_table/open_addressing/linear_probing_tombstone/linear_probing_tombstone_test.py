@@ -1,0 +1,119 @@
+import pytest
+
+from map.hash_table.open_addressing.linear_probing_tombstone import HashTableLinearProbingTombstone
+
+# capacity=8 기준 충돌 key 집합: h(1) = h(9) = h(17) = 1
+K1, K2, K3 = 1, 9, 17
+
+
+@pytest.fixture
+def ht():
+    return HashTableLinearProbingTombstone[int, str](8)
+
+
+class TestBasicOperations:
+    def test_starts_empty(self, ht):
+        assert len(ht) == 0
+        assert ht.is_empty()
+
+    def test_insert_new_key_returns_true(self, ht):
+        assert ht.insert(K1, "a") is True
+        assert len(ht) == 1
+        assert ht.search(K1) == "a"
+
+    def test_insert_existing_key_returns_false_and_updates(self, ht):
+        ht.insert(K1, "a")
+        assert ht.insert(K1, "A") is False
+        assert len(ht) == 1
+        assert ht.search(K1) == "A"
+
+    def test_setitem_updates_not_duplicates(self, ht):
+        ht[K1] = "a"
+        ht[K1] = "A"
+        assert ht[K1] == "A"
+        assert len(ht) == 1
+
+    def test_search_missing_raises_key_error(self, ht):
+        with pytest.raises(KeyError):
+            ht.search(K1)
+
+    def test_get_missing_returns_default(self, ht):
+        assert ht.get(K1) is None
+        assert ht.get(K1, "x") == "x"
+
+    def test_contains(self, ht):
+        assert K1 not in ht
+        ht.insert(K1, "a")
+        assert K1 in ht
+
+    def test_delete_existing_returns_true(self, ht):
+        ht.insert(K1, "a")
+        assert ht.delete(K1) is True
+        assert len(ht) == 0
+        assert K1 not in ht
+
+    def test_delete_missing_returns_false(self, ht):
+        assert ht.delete(K1) is False
+
+    def test_delitem_missing_raises_key_error(self, ht):
+        with pytest.raises(KeyError):
+            del ht[K1]
+
+    def test_collision_keys_stored_independently(self, ht):
+        ht.insert(K1, "a")
+        ht.insert(K2, "b")
+        ht.insert(K3, "c")
+        assert len(ht) == 3
+        assert ht.search(K1) == "a"
+        assert ht.search(K2) == "b"
+        assert ht.search(K3) == "c"
+
+    def test_resize_preserves_all_values(self, ht):
+        keys = [0, 8, 16, 24, 32]
+        for k in keys:
+            ht.insert(k, str(k))
+        assert len(ht) == 5
+        for k in keys:
+            assert ht.search(k) == str(k)
+
+
+class TestTombstoneBehavior:
+    def test_search_skips_tombstone(self, ht):
+        ht.insert(K1, "a")
+        ht.insert(K2, "b")
+        ht.delete(K1)
+        assert ht.search(K2) == "b"
+
+    def test_search_stops_at_none_not_at_tombstone(self, ht):
+        ht.insert(K1, "a")
+        ht.delete(K1)
+        with pytest.raises(KeyError):
+            ht.search(K2)
+
+    def test_delete_skips_tombstone(self, ht):
+        ht.insert(K1, "a")
+        ht.insert(K2, "b")
+        ht.delete(K1)
+        assert ht.delete(K2) is True
+        assert len(ht) == 0
+        with pytest.raises(KeyError):
+            ht.search(K2)
+
+    def test_insert_reuses_tombstone_slot(self, ht):
+        ht.insert(K1, "a")
+        ht.insert(K2, "b")
+        ht.delete(K1)
+        ht.insert(K3, "c")
+        assert ht.search(K2) == "b"
+        assert ht.search(K3) == "c"
+        assert len(ht) == 2
+
+    def test_insert_update_past_tombstone(self, ht):
+        """tombstone 뒤에 기존 key가 있으면 그 자리에서 갱신해야 한다."""
+        ht.insert(K1, "a")
+        ht.insert(K2, "b")
+        ht.delete(K1)
+        result = ht.insert(K2, "B")
+        assert result is False
+        assert len(ht) == 1
+        assert ht.search(K2) == "B"
