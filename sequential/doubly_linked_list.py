@@ -4,6 +4,7 @@ class DNode[T]:
         self.next: DNode[T] | None = None
         self.prev: DNode[T] | None = None
 
+
 class DoublyLinkedList[T]:
     def __init__(self):
         self._head: DNode[T] | None = None
@@ -22,9 +23,9 @@ class DoublyLinkedList[T]:
                 ret.append(str(cur.value))
                 cur = cur.next
             else:
-                raise ValueError('len이 잘못되었습니다')
+                raise ValueError("len이 잘못되었습니다")
 
-        return 'DoublyLinkedList(' + '<->'.join(ret) + ')'
+        return "DoublyLinkedList(" + "<->".join(ret) + ")"
 
     def __repr__(self) -> str:
         return f"DoublyLinkedList(len={self._len}, content={self})"
