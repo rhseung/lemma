@@ -1,3 +1,4 @@
+from map.hash_table.open_addressing.slot import is_entry
 from map.hash_table.key import ModularKey
 from map.hash_table.open_addressing.open_addressing import HashTableOpenAddressing
 
@@ -18,47 +19,38 @@ class HashTableLinearProbingRehashing[K: ModularKey, V](HashTableOpenAddressing[
     - linear probing에서만 cluster가 연속 구간이어서 이 방식이 안전하다.
     """
 
-    # ── abstract ──────────────────────────────────────────────────────────────
-
     def _probe(self, key: K, i: int) -> int:
         return (self._hash(key) + i) % self._capacity
 
     def delete(self, key: K) -> bool:
         """key를 삭제하고 뒤따르는 cluster를 pull-forward로 복구한다."""
-        idx = self._find_slot(key)
-        if idx is None:
+        probe_idx = self._find_slot(key)
+        if probe_idx is None:
             return False
 
-        self._table[idx] = None
+        self._table[probe_idx] = None
         self._len -= 1
-        self._rehash_cluster_after_delete(idx)
-        return True
 
-    # ── private ───────────────────────────────────────────────────────────────
+        idx = (probe_idx + 1) % self._capacity
+        while (kv := self._table[idx]) is not None:
+            if is_entry(kv):
+                self._table[idx] = None
+                self._len -= 1
+                self.insert(kv[0], kv[1])
+            idx = (idx + 1) % self._capacity
+
+        return True
 
     def _find_slot(self, key: K) -> int | None:
         """key가 있는 slot index를 반환한다. 없으면 None."""
         i = 0
         while i < self._capacity:
             probe_idx = self._probe(key, i)
-            slot = self._table[probe_idx]
-            if slot is None:
+            kv = self._table[probe_idx]
+
+            if kv is None:
                 return None
-            if slot[0] == key:
+            if is_entry(kv) and kv[0] == key:
                 return probe_idx
             i += 1
         return None
-
-    def _rehash_cluster_after_delete(self, empty_idx: int):
-        """빈 slot 직후부터 None이 나올 때까지 각 entry를 다시 insert한다.
-
-        각 entry를 꺼내 None으로 만든 뒤 insert를 호출하면,
-        삭제로 생긴 빈 칸 포함 앞쪽 자리부터 다시 채워진다.
-        """
-        idx = (empty_idx + 1) % self._capacity
-        while self._table[idx] is not None:
-            entry = self._table[idx]
-            self._table[idx] = None
-            self._len -= 1
-            self.insert(entry[0], entry[1])
-            idx = (idx + 1) % self._capacity
