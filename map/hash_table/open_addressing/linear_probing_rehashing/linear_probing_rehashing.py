@@ -33,7 +33,8 @@ class HashTableLinearProbingRehashing[K: ModularKey, V](HashTableOpenAddressing[
 
         idx = (probe_idx + 1) % self._capacity
         while (kv := self._table[idx]) is not None:
-            if is_entry(kv):
+            # rehashing은 tombstone을 안 남기므로 kv는 항상 entry (else 분기 도달 불가)
+            if is_entry(kv):  # pragma: no branch
                 self._table[idx] = None
                 self._len -= 1
                 self.insert(kv[0], kv[1])
@@ -54,3 +55,32 @@ class HashTableLinearProbingRehashing[K: ModularKey, V](HashTableOpenAddressing[
                 return probe_idx
             i += 1
         return None
+
+
+if __name__ == "__main__":
+
+    def _show(label: str, ht) -> None:
+        slots = []
+        for s in ht._table:
+            if s is None:
+                slots.append("·")
+            else:
+                slots.append(f"{s[0]}:{s[1]}")
+        print(f"  [{label}]")
+        print("   table:   ", " | ".join(slots))
+        print(f"   len={len(ht)}  capacity={ht._capacity}")
+
+    print("=== Linear Probing + Rehashing Delete ===")
+    print("  capacity=8, h(k)=k%8  →  h(1)=h(9)=h(17)=1 (모두 충돌)")
+    ht = HashTableLinearProbingRehashing[int, str](8)
+
+    ht.insert(1, "a")
+    ht.insert(9, "b")
+    ht.insert(17, "c")
+    _show("insert 1, 9, 17", ht)
+
+    ht.delete(1)
+    _show("delete 1  →  pull-forward 복구", ht)
+
+    print(f"   search(9)  = {ht.search(9)!r}")
+    print(f"   search(17) = {ht.search(17)!r}")

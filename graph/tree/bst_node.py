@@ -5,19 +5,19 @@ from dataclasses import dataclass
 from typing import Protocol, Self
 
 
-class Ordering(Protocol):
+class _Comparable(Protocol):
     def __lt__(self, value: Self, /) -> bool: ...
     def __gt__(self, value: Self, /) -> bool: ...
 
 
 @dataclass
-class BSTNode[T: Ordering]:
+class BSTNode[T: _Comparable]:
     key: T
     left: BSTNode[T] | None = None
     right: BSTNode[T] | None = None
 
 
-class BST[T: Ordering]:
+class BST[T: _Comparable]:
     """중복 키를 허용하지 않는 Set 의미의 이진 탐색 트리.
 
     불변식:
@@ -106,7 +106,9 @@ class BST[T: Ordering]:
             return
 
         node = self._root
-        while node is not None:  # pragma: no branch  # node는 항상 break/raise로 빠짐 (None 도달 불가)
+        while (
+            node is not None
+        ):  # pragma: no branch  # node는 항상 break/raise로 빠짐 (None 도달 불가)
             if node.key < key:
                 if node.right is None:
                     node.right = BSTNode(key)
@@ -253,7 +255,7 @@ class BST[T: Ordering]:
             yield node.key
 
 
-def _demo() -> None:
+if __name__ == "__main__":
     from scaffold.tree import Tree  # BST 본체는 scaffold 와 무관 — 데모에서만 사용
 
     bst = BST[int]()
@@ -276,7 +278,3 @@ def _demo() -> None:
 
     bst.delete_recursive(50)
     show("delete_recursive(50)  # 루트(자식 2개) → 후계자 60")
-
-
-if __name__ == "__main__":
-    _demo()

@@ -95,6 +95,13 @@ class TestHashTableChaining:
         assert table.get(1) is None
         assert table.get(1, "missing") == "missing"
 
+    def test_get_returns_value_for_existing_key(self):
+        table = HashTableChaining[int, str](4)
+        table.insert(1, "one")
+
+        assert table.get(1) == "one"
+        assert table.get(1, "default") == "one"  # default은 무시되고 실제 값 반환
+
     def test_resize_preserves_values(self):
         table = HashTableChaining[int, str](2)
 

@@ -1,3 +1,5 @@
-from map.hash_table.open_addressing.linear_probing_rehashing.linear_probing_rehashing import HashTableLinearProbingRehashing
+from map.hash_table.open_addressing.linear_probing_rehashing.linear_probing_rehashing import (
+    HashTableLinearProbingRehashing,
+)
 
 __all__ = ["HashTableLinearProbingRehashing"]

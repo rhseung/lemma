@@ -6,6 +6,7 @@ class Node[T]:
         self.value = value
         self.next: Node[T] | None = None
 
+
 class SinglyLinkedList[T]:
     def __init__(self):
         self._head: Node[T] | None = None
@@ -24,9 +25,9 @@ class SinglyLinkedList[T]:
                 ret.append(str(cur.value))
                 cur = cur.next
             else:
-                raise ValueError('len이 잘못 되었습니다.')
+                raise ValueError("len이 잘못 되었습니다.")
 
-        return 'SinglyLinkedList(' + '->'.join(ret) + ')'
+        return "SinglyLinkedList(" + "->".join(ret) + ")"
 
     def __repr__(self) -> str:
         return f"SinglyLinkedList(len={self._len}, content={self})"
@@ -150,7 +151,7 @@ class SinglyLinkedList[T]:
         return r
 
 
-def _demo():
+if __name__ == "__main__":
     linked_list = SinglyLinkedList[int]()
     print(linked_list)
 
@@ -172,7 +173,3 @@ def _demo():
     print(linked_list.pop_back(), linked_list)
     print(linked_list.pop_back(), linked_list)
     print(linked_list.pop_back(), linked_list)
-
-
-if __name__ == "__main__":
-    _demo()

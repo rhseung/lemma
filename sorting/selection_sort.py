@@ -6,7 +6,7 @@ def selection_sort(A: list[int]):
         for j in range(i + 1, n):
             if A[min_idx] > A[j]:
                 min_idx = j
-        A[i], A[min_idx] = A[min_idx], A[i]
+        A[min_idx], A[i] = A[i], A[min_idx]
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ from scaffold.graph import (
     vertices,
     vs,
 )
+from scaffold.tree import Tree
 
 __all__ = [
     "Edge",
@@ -27,6 +28,7 @@ __all__ = [
     "Graph",
     "Path",
     "Trail",
+    "Tree",
     "UnweightedGraph",
     "Vertex",
     "VertexList",

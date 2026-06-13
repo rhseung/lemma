@@ -1,6 +1,5 @@
 def bubble_sort(A: list[int]):
     n = len(A)
-
     for i in range(n):
         for j in range(n - i - 1):
             if A[j] > A[j + 1]:

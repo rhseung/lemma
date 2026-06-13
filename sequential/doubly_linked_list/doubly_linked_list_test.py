@@ -179,3 +179,12 @@ class TestDoublyLinkedList:
         assert len(linked_list) == 3
         assert str(linked_list) == "DoublyLinkedList(5<->20<->40)"
         assert pop_front_n(linked_list, 3) == [5, 20, 40]
+
+    def test_str_raises_when_len_is_corrupted(self):
+        # __str__는 _len과 실제 노드 수가 어긋나면 방어적으로 ValueError를 낸다
+        linked_list = DoublyLinkedList[int]()
+        linked_list.push_back(10)
+        linked_list._len = 5  # 노드는 1개뿐인데 len을 5로 손상시킴
+
+        with pytest.raises(ValueError):
+            str(linked_list)

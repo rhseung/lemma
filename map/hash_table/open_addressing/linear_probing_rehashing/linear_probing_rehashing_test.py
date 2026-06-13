@@ -246,3 +246,37 @@ class TestDifferentialAgainstDict:
                     assert ht.get(k) == ref[k]
                 else:
                     assert ht.get(k) is None
+
+
+class TestBaseClassEdgeCases:
+    """상위 클래스(HashTableOpenAddressing)의 경계 경로.
+
+    rehashing은 insert/search/__delitem__를 base 그대로 쓰므로 여기서 함께 검증한다.
+    """
+
+    @staticmethod
+    def _fill(ht):
+        ht._table = [(k, str(k)) for k in range(ht._capacity)]
+        ht._len = ht._capacity
+
+    def test_delitem_removes_existing_key(self, ht):
+        # __delitem__ 성공 경로: delete가 True면 KeyError 없이 끝난다
+        ht.insert(K1, "a")
+        del ht[K1]
+        assert K1 not in ht
+        assert len(ht) == 0
+
+    def test_search_missing_on_full_table_raises(self, ht):
+        self._fill(ht)
+        with pytest.raises(KeyError):
+            ht.search(99)
+
+    def test_insert_into_full_table_raises_overflow(self, ht):
+        self._fill(ht)
+        with pytest.raises(OverflowError):
+            ht.insert(99, "x")
+
+    def test_delete_missing_on_full_table_returns_false(self, ht):
+        # _find_slot이 빈칸 없이 한 바퀴 다 돌면 None → delete False
+        self._fill(ht)
+        assert ht.delete(99) is False

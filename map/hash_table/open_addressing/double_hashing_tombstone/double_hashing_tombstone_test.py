@@ -117,3 +117,55 @@ class TestTombstoneBehavior:
         assert result is False
         assert len(ht) == 1
         assert ht.search(K2) == "B"
+
+
+class TestResize:
+    def test_insert_past_load_factor_triggers_resize(self, ht):
+        # load factor 0.66 * 8 = 5.28 → 6번째 삽입에서 resize
+        for k in range(6):
+            ht.insert(k, str(k))
+
+        assert ht._capacity > 8
+        assert len(ht) == 6
+        for k in range(6):
+            assert ht.search(k) == str(k)
+
+    def test_reusing_tombstone_can_trigger_resize(self, ht):
+        # slot 0~4를 채우고 0을 지워 slot0을 tombstone으로 만든 뒤,
+        # home이 0인 key 8을 넣으면 tombstone(slot0)을 재사용하면서
+        # len이 6이 되어(0.75) resize까지 일어난다.
+        for k in range(5):
+            ht.insert(k, str(k))
+        ht.delete(0)
+        ht.insert(5, "5")
+        ht.insert(8, "8")
+
+        assert ht._capacity > 8
+        assert ht.search(8) == "8"
+        for k in [1, 2, 3, 4, 5]:
+            assert ht.search(k) == str(k)
+        with pytest.raises(KeyError):
+            ht.search(0)
+
+
+class TestFullTable:
+    """resize가 막혀 table이 가득 찬 극단 상황의 방어 경로."""
+
+    @staticmethod
+    def _fill(ht):
+        ht._table = [(k, str(k)) for k in range(ht._capacity)]
+        ht._len = ht._capacity
+
+    def test_search_missing_raises_key_error(self, ht):
+        self._fill(ht)
+        with pytest.raises(KeyError):
+            ht.search(99)
+
+    def test_delete_missing_returns_false(self, ht):
+        self._fill(ht)
+        assert ht.delete(99) is False
+
+    def test_insert_raises_overflow_error(self, ht):
+        self._fill(ht)
+        with pytest.raises(OverflowError):
+            ht.insert(99, "x")

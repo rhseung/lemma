@@ -1,3 +1,3 @@
-from map.hash_table.chaining.chaining import HashTableChaining, _demo
+from map.hash_table.chaining.chaining import HashTableChaining
 
-__all__ = ["HashTableChaining", "_demo"]
+__all__ = ["HashTableChaining"]

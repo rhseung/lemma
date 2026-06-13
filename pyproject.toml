@@ -98,6 +98,9 @@ ignore = [
 "scaffold/graph/**/*.py" = [
     "PLC0415",  # 상호 의존 클래스(Vertex↔Edge↔Walk)의 순환 import 회피용 local import
 ]
+"scaffold/tree/**/*.py" = [
+    "PLC0415",  # 렌더 시점에만 필요한 graphviz·강조 헬퍼의 local import
+]
 "benchmarks/**/*.py" = [
     "T201",     # print in benchmarks OK
 ]
@@ -141,5 +144,7 @@ exclude_lines = [
     "pragma: no cover",
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
-    "if __name__ == .__main__.:",
+    "if __name__ == .__main__.:",  # 인라인 데모 블록 (if __name__) 제외
+    ': \.\.\.$',      # 한 줄 스텁 (Protocol 메서드): ... 으로 끝나는 줄
+    '^\s*\.\.\.$',    # 본문이 ... 뿐인 추상 메서드 (@abstractmethod)
 ]

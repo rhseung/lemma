@@ -25,7 +25,7 @@ class DynamicArray[T]:
 
     def __getitem__(self, idx: int) -> T:
         """idx 위치의 값을 반환한다. 시간복잡도는 O(1)."""
-        if not(0 <= idx < self._len):
+        if not (0 <= idx < self._len):
             raise IndexError(f"0 <= {idx=} < len={self._len}")
 
         return cast(T, self._content[idx])
@@ -82,7 +82,7 @@ class DynamicArray[T]:
         배열이 가득 찬 경우 확장도 O(n)이지만, 전체 시간복잡도는 여전히 O(n)이다.
         """
         # 뒤에 append 하는 것까지 고려해서 <= len
-        if not(0 <= idx <= self._len):
+        if not (0 <= idx <= self._len):
             return False
 
         if self._len == self._capacity:
@@ -115,7 +115,7 @@ class DynamicArray[T]:
         idx 뒤의 원소들을 한 칸씩 당겨야 하므로 최악의 경우 O(n)이다.
         맨 뒤 원소를 제거하는 경우에는 O(1)이다.
         """
-        if not(0 <= idx < self._len):
+        if not (0 <= idx < self._len):
             return False
 
         # 1/4이면 shrink도 구현해야 한다 함
@@ -143,7 +143,7 @@ class DynamicArray[T]:
         return self.pop(idx)
 
 
-def _demo():
+if __name__ == "__main__":
     arr = DynamicArray[int](2)
     print(arr)
 
@@ -163,7 +163,3 @@ def _demo():
 
     arr.remove(40)
     print("after remove:", arr)
-
-
-if __name__ == "__main__":
-    _demo()

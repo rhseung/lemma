@@ -127,7 +127,7 @@ class HashTableChaining[K: ModularKey, V]:
         self._buckets = new_buckets
 
 
-def _demo():
+if __name__ == "__main__":
     table = HashTableChaining[int, str](4)
 
     def show(step: str):
@@ -154,7 +154,3 @@ def _demo():
 
     table.delete(5)
     show("delete(5)")
-
-
-if __name__ == "__main__":
-    _demo()

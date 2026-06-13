@@ -118,7 +118,7 @@ class CircularDeque[T]:
         return cast(T, self._content[(self._rear - 1 + self._capacity) % self._capacity])
 
 
-def _demo():
+if __name__ == "__main__":
     deque = CircularDeque[int](5)
 
     def show(step: str):
@@ -143,7 +143,3 @@ def _demo():
 
     deque.push_front(0)
     show("push_front(0)")
-
-
-if __name__ == "__main__":
-    _demo()

@@ -151,7 +151,7 @@ class DoublyLinkedList[T]:
         return r
 
 
-def _demo():
+if __name__ == "__main__":
     linked_list = DoublyLinkedList[int]()
     print(linked_list)
 
@@ -165,7 +165,3 @@ def _demo():
 
     print("pop_back:", linked_list.pop_back())
     print("after pop_back:", linked_list)
-
-
-if __name__ == "__main__":
-    _demo()
