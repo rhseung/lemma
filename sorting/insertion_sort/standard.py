@@ -1,6 +1,11 @@
 def insertion_sort(A: list[int]):
-    n = len(A)
+    """
+    time: best O(n), avg O(n^2)
+    space: always O(1) -> in-place
+    stable
+    """
 
+    n = len(A)
     for i in range(1, n):
         key = A[i]
         j = i - 1
@@ -13,4 +18,4 @@ def insertion_sort(A: list[int]):
 if __name__ == "__main__":
     from scaffold.sort_tester import test_sort
 
-    print(test_sort(insertion_sort, bench=True))
+    test_sort(insertion_sort, bench=True)
